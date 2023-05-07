@@ -6,7 +6,7 @@
 2. In Eclipse go File > Import Projects from File System
 3. Select the directory you cloned the repo to and complete the import.
 
-### Notes
+## Notes
 
 There are 6 files in the project. </br>
 `WeatherServer.java` is the main server file. It waits for a connection from a client, and upon recieving one, opens up a thread to handle it. You can force exit this through eclipse, or in command line with ctrl-c and it should handle closing of the server properly. </br>
