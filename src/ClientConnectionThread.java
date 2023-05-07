@@ -26,9 +26,10 @@ class ClientConnectionThread extends Thread {
 			/*** TODO Authenticate the user ***/
 			// either register new user
 			// or let them login
+			// the authentication information should be stored in server, not in this file because this is just an individual thread
 			
 			
-			/*** TODO Read command from user ***/
+			/*** TODO Read command from user (this is where the loop would be) ***/
 			// take command from user
 			// e.g view request, create request, stop request, etc
 			// execute the command

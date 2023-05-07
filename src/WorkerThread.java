@@ -12,13 +12,15 @@ class WorkerThread extends Thread {
 	Socket serverClient;
 	int clientNumber;
 
-	WorkerThread(Socket inSocket, int counter) {
-		serverClient = inSocket;
-		clientNumber = counter;
+	WorkerThread() {
+		// TODO constructor, do we need anything here?
 	}
 	
 	public void run() {
 		// TODO what we doing in here?
+		// allocate tasks to worker nodes, create new nodes when necessary 
 	}
+	
+	
 
 }
