@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Scanner;
 
 /*** Handles the client connection, reads input, authenticates user via server ***/
 class ClientConnectionThread extends Thread {
@@ -75,6 +76,18 @@ class ClientConnectionThread extends Thread {
 			
 			
 			/*** TODO Read command from user (this is where the loop would be) ***/
+			
+		String choice;
+		do{
+			System.out.println("Select your action:");
+			System.out.println("0. Quit");
+			System.out.println("1. Find average monthly maximum or minimum temperature of a given station id in a given year");
+            System.out.println("2. Find yearly average maximum or minimum temperature of all the stations in a given year");
+            System.out.println("3. Find month which has highest/lowest maximum temperature in a given year and station");
+			choice = input.readLine();
+			output.writeBytes(choice);
+		}
+		while (!new String("0").equals(choice));
 			// take command from user
 			// e.g view request, create request, stop request, etc
 			// execute the command
@@ -108,5 +121,7 @@ class ClientConnectionThread extends Thread {
 	public void setPasswordList(List<String> passwordList) {
 		this.passwordList = passwordList;
 	}
-
-}
+	public static void menu(Scanner sc, DataOutputStream output) {
+		
+	}
+	}
