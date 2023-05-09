@@ -78,11 +78,22 @@ public class UserConnection {
 	    			}
 				}	            
 			}
-			
+			String actionChoice="";
+			while (!(actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"))) {  //wait for valid response
+				do{
+				System.out.println("\nSelect your action:");
+				System.out.println("0. Quit");
+				System.out.println("1. Find average monthly maximum or minimum temperature of a given station id in a given year");
+				System.out.println("2. Find yearly average maximum or minimum temperature of all the stations in a given year");
+				System.out.println("3. Find month which has highest/lowest maximum temperature in a given year and station");
+	            actionChoice = br.readLine();
+				}
+				while(!actionChoice.equals("0"));
+				output.writeBytes(actionChoice+"\n");
+			}
 			
 			input.close();
 			output.close();
-			
 			socket.close();
 		} catch(Exception e){
 			System.out.println(e);

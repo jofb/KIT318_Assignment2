@@ -76,18 +76,17 @@ class ClientConnectionThread extends Thread {
 			
 			
 			/*** TODO Read command from user (this is where the loop would be) ***/
-			
-		String choice;
-		do{
-			System.out.println("Select your action:");
-			System.out.println("0. Quit");
-			System.out.println("1. Find average monthly maximum or minimum temperature of a given station id in a given year");
-            System.out.println("2. Find yearly average maximum or minimum temperature of all the stations in a given year");
-            System.out.println("3. Find month which has highest/lowest maximum temperature in a given year and station");
-			choice = input.readLine();
-			output.writeBytes(choice);
-		}
-		while (!new String("0").equals(choice));
+			String actionChoice;
+			do{
+				output.writeBytes("Select your action:");
+				output.writeBytes("0. Quit");
+				output.writeBytes("1. Find average monthly maximum or minimum temperature of a given station id in a given year");
+				output.writeBytes("2. Find yearly average maximum or minimum temperature of all the stations in a given year");
+				output.writeBytes("3. Find month which has highest/lowest maximum temperature in a given year and station");
+				actionChoice = input.readLine();
+				output.writeBytes(actionChoice);
+			}
+			while (actionChoice.equals("0"));
 			// take command from user
 			// e.g view request, create request, stop request, etc
 			// execute the command
