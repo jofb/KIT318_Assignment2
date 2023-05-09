@@ -12,6 +12,19 @@ public class WeatherServer{
 	// TODO take a look at the WorkUnit class
 	static Queue<WorkUnit> workQueue = new SynchronousQueue<WorkUnit>();
 
+	// list of passwords for registered users
+    static List<String> passwordList = new ArrayList<String>();
+
+    //getter for password list
+    public static List<String> getPasswordList() {
+        return passwordList;
+    }
+    
+    //setter for password list
+    public static void setPasswordList(List<String> passwordList) {
+        WeatherServer.passwordList = passwordList;
+    }
+	
 	public static void main(String[] args) throws Exception {
 
 		// TODO create work queue
