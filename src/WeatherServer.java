@@ -33,6 +33,9 @@ public class WeatherServer{
 		// starting up the work handler thread
 		workHandler.run();
 		
+		// TODO remove this, admin password
+		passwordList.add("password");
+		
 		// open up server on port
 		ServerSocket server = new ServerSocket(8888);
 

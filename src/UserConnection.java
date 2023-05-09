@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.util.UUID;
@@ -13,6 +14,15 @@ public class UserConnection {
 	public UserConnection(Socket clientSocket, int clientNumber) {
 		this.clientSocket = clientSocket;
 		this.clientNumber = clientNumber;
+	}
+	// reads multiple lines from server, exiting on an empty line
+	private static void menuPrint(BufferedReader input) throws IOException {
+		String line;
+		while ((line = input.readLine()) != null) { 
+			if(line.length() == 0) break;
+			// print the line
+			System.out.println("Server: " + line);
+		}
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -28,56 +38,58 @@ public class UserConnection {
 			// inputstream for user input
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			
-			String line;  //line that comes from the server (could just use input.readLine() every time)
-			while ((line = input.readLine()) != null) {  //weird code to read what the server says until we hit a line that says stop
-				if (line.equals("stop")) {
-			        break;  //might change this because very ugly way of doing it
-			    }
-				System.out.println("Server: " + line);  //prints the line
-			}
-			
-			String selection = "";  //user's menu selection
-			while (!(selection.equals("1") || selection.equals("2"))) {  //if it isn't a legitimate response keep asking
+			// input line
+			String line;
+
+			// waits for login menu
+			menuPrint(input);
+
+			// menu selection
+			String selection;  
+			// validate response (ideally this validation should be on server side, but is fine here)
+			do {
 				System.out.println("Please enter a number (1 or 2)...");
-	            selection = br.readLine();
+				selection = br.readLine();
 			}
+			while (!(selection.equals("1") || selection.equals("2")));
             
-            output.writeBytes(selection+"\n");
+			// return selection to server
+            output.writeBytes(selection + "\n");
             
-            if (selection.equals("1")) {  //go into the register menu, print the lines
-            	while ((line = input.readLine()) != null) {
-    				if (line.equals("stop")) {
-    			        break;
-    			    }
-    				System.out.println("Server: " + line);
-    			}
-			} else if (selection.equals("2")) {  //go into the login menu
-				boolean done = false;  //boolean for if we have found a correct password
-				
-				while (!done) {  //loops until we've found a correct password
-					while ((line = input.readLine()) != null) {  //outputs first chunk of server text about inputting password
-	    				if (line.equals("stop")) {
-	    			        break;
-	    			    }
-	    				System.out.println("Server: " + line);
-	    			}					
-					
-					System.out.println("Please enter password...");
-		            String attempt = br.readLine();  //reads user's password input
-		            output.writeBytes(attempt+"\n");  //sends it to the server (or server thread, technically)
-		            
-		            while ((line = input.readLine()) != null) {  //outputs whether the password is correct or not
-	    				if (line.equals("stop")) {
-	    			        break;
-	    			    }
-	    				if (line.equals("DONE")) {  //means we have a correct password
-	    					done = true;  //can break our loop
-	    				} else {
-	    					System.out.println("Server: " + line);
-	    				}
-	    			}
-				}	            
-			}
+            // options
+            switch(selection) 
+            {
+            	// register user case
+	            case "1":
+	            	// print out the register user menu
+	            	menuPrint(input);
+	            	break;
+	            
+	            // login user case
+	            case "2":
+	            	// print out the login user menu
+	            	boolean verified = false;
+	            	do 
+	            	{
+	            		System.out.println(input.readLine());
+	            		System.out.println("Please enter password...");
+	            		
+	            		// send password attempt
+	            		String attempt = br.readLine();
+	            		output.writeBytes(attempt + "\n");
+	            		
+	            		// check verification
+	            		verified = input.read() != 0;
+	            		
+	            		// verification messages
+	            		System.out.println(input.readLine());
+
+	            	} while(!verified);
+	            	break;
+            }
+            
+            // TODO this isn't done yet
+            // user commands
 			String actionChoice="";
 			while (!(actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"))) {  //wait for valid response
 				do{
@@ -92,6 +104,7 @@ public class UserConnection {
 				output.writeBytes(actionChoice+"\n");
 			}
 			
+			// TODO move these closes to a finally block
 			input.close();
 			output.close();
 			socket.close();

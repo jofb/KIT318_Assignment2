@@ -25,50 +25,57 @@ class ClientConnectionThread extends Thread {
 			DataOutputStream output = new DataOutputStream(serverClient.getOutputStream());
 			BufferedReader input = new BufferedReader(new InputStreamReader(serverClient.getInputStream()));
 			
-			//registers new user, or lets them login
-			//i have used only a password to login, no id or username
-			passwordList = WeatherServer.getPasswordList();  //gets the list of passwords from the server (may want to use setter here?)
-			String verifiedPassword;  //string of the confirmed password, which the server has verified is in its system
+			// password list & verification
+			passwordList = WeatherServer.getPasswordList();  
+			String verifiedPassword;  
 			
-			//menu to register or login
+			// menu to register or login
 			output.writeBytes("Welcome! Are you... \n");
 			output.writeBytes("1. A new user to be registered\n");
 			output.writeBytes("2. A returning user needing to login\n");
-			output.writeBytes("stop\n");  //stop is used to signify that this will be the last output written for this chunk of output
+			output.writeBytes("\n");  
+			
+			// get the user selection
 			String selection = input.readLine();
-			//System.out.println(selection);  //debug code
-
-			if (selection.equals("1")) {  //user wants to be registered
-				output.writeBytes("You will now be registered. Below will be your password which you can use to login in the future\n");
-				String password = UUID.randomUUID().toString();  //code to get a big, unique string
+			
+			// registration
+			if (selection.equals("1")) {
+				// generate a new password
+				String password = UUID.randomUUID().toString();
 				passwordList.add(password);
-				WeatherServer.setPasswordList(passwordList);  //password is added to local list, and the server list is then updated with the new one
+				// update global password list
+				WeatherServer.setPasswordList(passwordList); 
+
+				// write new password to user
+				output.writeBytes("You will now be registered. Below is your password which you can use to login in the future\n");
 				output.writeBytes(password + "\n");
-				output.writeBytes("stop\n");
+				output.writeBytes("\n");
 				verifiedPassword = password;  //this is the successful password, which can then be used later
-				//from here goes to the "read command from user" section
-			} else if (selection.equals("2")) {  //user wants to login
-				boolean successfulPassword = false;  //boolean for if password is a success
+			} 
+			// login
+			else if (selection.equals("2")) 
+			{
+				// if password has been verified
+				boolean successfulPassword = false;
 				
-				while (!successfulPassword) {  //while we don't have a verified password
+				while (!successfulPassword) {
 					output.writeBytes("Please input your password to be able to manage requests:\n");
-					output.writeBytes("stop\n");
-					String attempt = input.readLine();  //password the user wants to login with
-					//System.out.println(attempt);  //debug code
-					for (String password:passwordList) {  //goes through password list to check if it's in there
-						if (attempt.equals(password)) {
-							successfulPassword = true;
-						}
-					}
-					if (successfulPassword) {  //it's a success
+
+					// password attempt
+					String attempt = input.readLine();  
+
+					// check if password exists
+					successfulPassword = passwordList.contains(attempt);
+
+					// output the verification attempt
+					output.writeBoolean(successfulPassword);
+					
+					// verification message
+					if(successfulPassword)
+					{
 						output.writeBytes("Your password has been verified. Continuing to the next menu...\n");
-						output.writeBytes("DONE\n");
-						output.writeBytes("stop\n");
-						verifiedPassword = attempt;  //verified password
-						successfulPassword = true;  //exits loop because we've logged in correctly
 					} else {
 						output.writeBytes("Incorrect password...\n");
-						output.writeBytes("stop\n");
 					}
 				}
 				//from here goes to the "read command from user" section
@@ -76,6 +83,10 @@ class ClientConnectionThread extends Thread {
 			
 			
 			/*** TODO Read command from user (this is where the loop would be) ***/
+			/** TODO this should print out the options: view, create, stop request (or exit) */
+			// create request gives you the three request type options, then takes in the input for the request
+			// view request takes in a request id
+			// stop request takes in a request id
 			String actionChoice;
 			do{
 				output.writeBytes("Select your action:");
