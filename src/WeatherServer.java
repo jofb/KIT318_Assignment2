@@ -4,14 +4,14 @@ import java.util.*;
 import java.util.concurrent.SynchronousQueue;
 public class WeatherServer{
 	
-	// handles the work nodes
-	static WorkerThread workHandler = new WorkerThread();
-	
+
 	// queue of all work units/requests
 	// TODO should we move this to the workHandler thread?
 	// TODO take a look at the WorkUnit class
 	static Queue<WorkUnit> workQueue = new SynchronousQueue<WorkUnit>();
-
+	// handles the work nodes
+	static WorkHandler workHandler = new WorkHandler(workQueue);
+	
 	// list of passwords for registered users
     static List<String> passwordList = new ArrayList<String>();
 
@@ -180,6 +180,6 @@ public class WeatherServer{
 class WorkUnit {
 	Integer requestId;
 	Integer requestType;
-	List<Integer> data; // TODO is this always an integer?
+	List<Integer> data; 
 	Integer workId; // TODO might not be necessary
 }
