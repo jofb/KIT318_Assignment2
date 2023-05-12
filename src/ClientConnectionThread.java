@@ -23,12 +23,10 @@ class ClientConnectionThread extends Thread {
 	private List<String> passwordList;  //list of all passwords
 	
 	
-	ClientConnectionThread(Socket inSocket, int counter, Queue<Query> _requestQueue, Lock _lock, Condition _condition) {
+	ClientConnectionThread(Socket inSocket, int counter, Queue<Query> _requestQueue) {
 		serverClient = inSocket;
 		clientNumber = counter;
 		requestQueue = _requestQueue;
-		lock = _lock;
-		condition = _condition;
 	}
 	
 	public void run() {

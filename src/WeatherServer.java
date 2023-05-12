@@ -55,10 +55,7 @@ public class WeatherServer{
 			int counter = 0;
 			
 			System.out.println("Server started ...");
-			
-			Lock lock = new ReentrantLock();
-			Condition condition = lock.newCondition();
-			
+
 			// TODO this loop needs an exit condition
 			// every time we want to accept a new user need a thread open
 			while(true) {
@@ -68,7 +65,7 @@ public class WeatherServer{
 				
 				// create new thread to handle client, then start the thread
 				ClientConnectionThread thread = 
-						new ClientConnectionThread(client, counter, queryQueue, lock, condition);
+						new ClientConnectionThread(client, counter, queryQueue);
 				serverThreads.add(thread);
 				thread.start();
 				// break; add this if you just want one connection and then the server close
