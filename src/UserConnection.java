@@ -103,7 +103,11 @@ public class UserConnection {
 				while(!actionChoice.equals("0"));
 				output.writeBytes(actionChoice+"\n");
 			}
-			
+            
+            // get the response from server
+            line = input.readLine();
+            System.out.println(line);
+
 			// TODO move these closes to a finally block
 			input.close();
 			output.close();

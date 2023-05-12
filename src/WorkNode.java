@@ -25,7 +25,9 @@ public class WorkNode {
 	
 	public void main(String[] args) throws Exception
 	{
+		// the worker node is a server in of itself, it waits for connections from the weather server
 		ServerSocket worker = new ServerSocket(8888);
+		
 		Socket weatherServer;
 		BufferedReader input;
 		DataOutputStream output;
@@ -43,6 +45,11 @@ public class WorkNode {
 			// parse the request type
 			// for now lets assume the first response is the request type
 			int requestType = input.read();
+			
+			/************************** TODO DOWNLOADING FILE **********************************/
+			/* all of the input here can be changed to reflect the address of the file to download + name */
+			
+			// and then once we've downloaded, move to processing
 			
 			// now lets take in our list of strings, then convert to integers
 			String line = input.readLine();

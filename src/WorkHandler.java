@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
 
 /*** This thread will be in charge of handling all worker nodes and reading from the work queue ***/
@@ -16,13 +17,17 @@ class WorkHandler extends Thread {
 	
 	Socket serverClient;
 	int clientNumber;
-	// this should really be a list
+	// this should really be a list (temporary)
 	WorkerNode w1, w2, w3;
 	
-	Queue<WorkUnit> workQueue;
+	// queue of responses
+	Queue<Query> requestQueue;
 
-	WorkHandler(Queue<WorkUnit> workQueue) {
-		this.workQueue = workQueue;
+	
+	Queue<WorkUnit> workQueue = new LinkedBlockingQueue<WorkUnit>();
+
+	WorkHandler(Queue<Query> requestQueue) {
+		this.requestQueue = requestQueue;
 	}
 	
 	public void run() {
@@ -30,33 +35,73 @@ class WorkHandler extends Thread {
 		w1 = new WorkerNode(8886);
 		w2 = new WorkerNode(8887);
 		w3 = new WorkerNode(8889);
-		
-		// i believe this pauses the thread until the work queue is notified of change 
-		// which can be handled server side with workQueue.notifyAll();
-		try {
-			workQueue.wait();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-		// to allocate a task, we grab a workunit from the queue
-		// TODO this is a naive removal, could be improved by searching the queue and checking priority
-		// TODO add priority variable to work units? based on request type
-		WorkUnit work = workQueue.poll();
-		
-		// and once we have the work we can connect to an available worker
-		
-		// and do the deed
-		
-		// the deed involves first sending the request type as an int (0, 1, 2)
-		
-		// then sending the list of ints within the work as one string
-		
-		// TODO additionally, we should be polling every few minutes to check if a work node has completed work
-	}
-	
-	
 
+		while(true)
+		{
+			// feel free to get rid of this
+			System.out.println("Waiting for Requests...");
+			// wait for updates to request queue
+			synchronized(requestQueue)
+			{
+				try {
+					// this will wait until requestQueue is notified, OR 1 minute TODO change to 5 (or w/e is appropriate)
+					requestQueue.wait(60000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
+			
+
+			for(Query query : requestQueue)
+			{
+				// parse each query and handle
+				
+				// cases:
+				// 1. create a request
+				//		based on request type, split up data into work units
+				//		then put work units into work queue
+				
+				// 2. view request
+				//		check status of request somehow (perhaps checking work queue)
+				
+				// 3. cancel request
+				//		remove all work units associated with request id from queue
+				
+				// once done, create a QueryResponse object and attach to the query\
+				
+				// for case 1, the response is the requestId associated with the created request
+				// for case 2, the response is the status of the request
+				// for case 3, the response is confirmation of the cancellation of request
+
+				QueryResponse response = new QueryResponse("this is a really cool response!");
+				query.response = response;
+				// then notify the connection thread that this query has a response ready
+				synchronized(query)
+				{
+					query.notify();
+				}
+			}
+
+			// poll workers and check if there are any results
+			
+			// add any results to some results queue, which can then be read when requesting to see results
+			
+			for(WorkUnit work : workQueue)
+			{
+				// allocate each work unit to available workers
+			}
+		}
+	}
 }
+
+/* Class to store information about a requests work unit */
+class WorkUnit {
+	Integer requestId;
+	Integer requestType;
+	String data; 
+	Integer workId; // TODO might not be necessary
+}
+
 
 // TODO in here we could also create a method to create the VM
 // TODO rather than port it should be storing an ip address since we will be working with VMs

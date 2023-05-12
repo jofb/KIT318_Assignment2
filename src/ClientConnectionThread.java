@@ -4,19 +4,31 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.UUID;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.Scanner;
 
 /*** Handles the client connection, reads input, authenticates user via server ***/
 class ClientConnectionThread extends Thread {
 	
-	Socket serverClient;
-	int clientNumber;
+	private Socket serverClient;
+	private int clientNumber;
+	private Queue<Query> requestQueue;
+	private Lock lock;
+	private Condition condition;
+	
 	private List<String> passwordList;  //list of all passwords
-
-	ClientConnectionThread(Socket inSocket, int counter) {
+	
+	
+	ClientConnectionThread(Socket inSocket, int counter, Queue<Query> _requestQueue, Lock _lock, Condition _condition) {
 		serverClient = inSocket;
 		clientNumber = counter;
+		requestQueue = _requestQueue;
+		lock = _lock;
+		condition = _condition;
 	}
 	
 	public void run() {
@@ -106,7 +118,17 @@ class ClientConnectionThread extends Thread {
 			
 			//use verifiedPassword here, as this has been confirmed to be right. Put in a map with request id and stuff?
 			
+			// TODO change this to the correct request with correct params
+			Query q = WeatherServer.addRequest(QueryType.CREATE, "");
 			
+			// wait for query to be notified (when the response is ready)
+			synchronized(q)
+			{
+				q.wait();
+			}
+
+			output.writeBytes("Response: " + q.response.responseBody + "\n");
+			requestQueue.remove(q);
 			// closing streams
 			input.close();
 			output.close();

@@ -1,37 +1,37 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+
+enum QueryType { CREATE, VIEW, STOP };
+
 public class WeatherServer{
 	
+	static int queryCounter = 0;
 
-	// queue of all work units/requests
-	// TODO should we move this to the workHandler thread?
-	// TODO take a look at the WorkUnit class
-	static Queue<WorkUnit> workQueue = new SynchronousQueue<WorkUnit>();
+
+	// queue of all queries
+	static Queue<Query> queryQueue;
+	
 	// handles the work nodes
-	static WorkHandler workHandler = new WorkHandler(workQueue);
+	static WorkHandler workHandler;
 	
 	// list of passwords for registered users
     static List<String> passwordList = new ArrayList<String>();
 
-    //getter for password list
-    public static List<String> getPasswordList() {
-        return passwordList;
-    }
-    
-    //setter for password list
-    public static void setPasswordList(List<String> passwordList) {
-        WeatherServer.passwordList = passwordList;
-    }
-	
 	public static void main(String[] args) throws Exception {
-
-		// TODO create work queue
-		// TODO create request object
 		
+		queryQueue = new LinkedBlockingQueue<Query>();
+		workHandler = new WorkHandler(queryQueue);
+
 		// starting up the work handler thread
-		workHandler.run();
+		workHandler.start();
 		
 		// TODO remove this, admin password
 		passwordList.add("password");
@@ -44,9 +44,9 @@ public class WeatherServer{
 			// list of client threads
 			List<ClientConnectionThread> serverThreads = new ArrayList<>();
 			
-			List<String> Data = processData();
-			HashMap<String, List<String>> dataByID = dataIDSplit(Data);
-			HashMap<String, List<String>> dataByYear = dataYearSplit(Data);
+//			List<String> Data = processData();
+//			HashMap<String, List<String>> dataByID = dataIDSplit(Data);
+//			HashMap<String, List<String>> dataByYear = dataYearSplit(Data);
 			
 //			for (String i : dataByYear.keySet()) {  //debug function
 //				System.out.println("key: " + i + " value: " + dataByYear.get(i));
@@ -56,6 +56,9 @@ public class WeatherServer{
 			
 			System.out.println("Server started ...");
 			
+			Lock lock = new ReentrantLock();
+			Condition condition = lock.newCondition();
+			
 			// TODO this loop needs an exit condition
 			// every time we want to accept a new user need a thread open
 			while(true) {
@@ -64,7 +67,8 @@ public class WeatherServer{
 				Socket client = server.accept();
 				
 				// create new thread to handle client, then start the thread
-				ClientConnectionThread thread = new ClientConnectionThread(client, counter);
+				ClientConnectionThread thread = 
+						new ClientConnectionThread(client, counter, queryQueue, lock, condition);
 				serverThreads.add(thread);
 				thread.start();
 				// break; add this if you just want one connection and then the server close
@@ -78,10 +82,37 @@ public class WeatherServer{
 		}
 		
 	}
+
+    //getter for password list
+    public static List<String> getPasswordList() {
+        return passwordList;
+    }
+    
+    //setter for password list
+    public static void setPasswordList(List<String> passwordList) {
+        WeatherServer.passwordList = passwordList;
+    }
+	
+    /* add request to queue */
+    public static Query addRequest(QueryType _requestType, String _query) 
+    {
+    	queryCounter++;
+    	// add new query to queue
+    	Query query = new Query(queryCounter, _requestType, _query);
+    	queryQueue.add(query);
+    	
+    	// notify the work handler
+    	synchronized(queryQueue)
+    	{
+        	queryQueue.notify();
+    	}
+    	return query;
+    }
 	
 	//gets a line of data from the file, splits it by commas, gets the relevant data, and returns it as a list
 	private static List<String> processData() throws FileNotFoundException {		
-		Scanner sc = new Scanner(new File("C:\\Users\\adaml\\Downloads\\1863.csv"));  //CHANGE THIS TO YOUR FILE LOCATION
+		//CHANGE THIS TO YOUR FILE LOCATION
+		Scanner sc = new Scanner(new File("C:\\Users\\adaml\\Downloads\\1863.csv"));  
 		List<String> allData = new ArrayList<String>();  //list of all our data
 		
 		do {			
@@ -146,40 +177,28 @@ public class WeatherServer{
 		}
 		return dataByYear;
 	}
-	
-	// TODO
-	public void cancelRequest() {
-		// remove all from work queue
-		
-		// inform worker thread
-	}
-	
-	/* Views the status of the request
-	 * id: the id of the request to check
-	 *  */
-	// TODO
-	public void viewRequestStatus(int id) {
-		// check how many of the work units have been completed, compare to total
-	}
-	
-	// TODO this will take some work unit/request and add it to the work queue
-	public void addToWorkQueue() {
-		// generate request id?
-		
-		// add to queue
-	}
-	
-	// TODO get the work queue, change return type
-	public Queue<WorkUnit> getWorkQueue() {
-		return workQueue;
-	}
-	
+
 }
 
-/* Class to store information about a requests work unit */
-class WorkUnit {
-	Integer requestId;
-	Integer requestType;
-	List<Integer> data; 
-	Integer workId; // TODO might not be necessary
+class QueryResponse {
+	String responseBody;
+	
+	QueryResponse(String _response)
+	{
+		responseBody = _response;
+	}
+}
+
+class Query {
+	int queryId;
+	QueryType queryType;
+	String queryParams;
+	QueryResponse response;
+	
+	Query(int id, QueryType type, String params)
+	{
+		queryId = id;
+		queryType = type;
+		queryParams = params;
+	}
 }
