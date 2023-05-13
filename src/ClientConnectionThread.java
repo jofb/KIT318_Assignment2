@@ -97,17 +97,83 @@ class ClientConnectionThread extends Thread {
 			// create request gives you the three request type options, then takes in the input for the request
 			// view request takes in a request id
 			// stop request takes in a request id
-			String actionChoice;
+			String actionChoice="";
+			String requestType="";
+			int stationId;
+			int year;
+			String maxMin;
+			int id;
+			while (!(actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"))) { 
 			do{
-				output.writeBytes("Select your action:");
-				output.writeBytes("0. Quit");
-				output.writeBytes("1. Find average monthly maximum or minimum temperature of a given station id in a given year");
-				output.writeBytes("2. Find yearly average maximum or minimum temperature of all the stations in a given year");
-				output.writeBytes("3. Find month which has highest/lowest maximum temperature in a given year and station");
+				output.writeBytes("0. Quit\n");
+				output.writeBytes("1. View requests\n");
+				output.writeBytes("2. Create request\n");
+				output.writeBytes("3. Stop request\n");
+				output.writeBytes("Select your action:\n\n");
 				actionChoice = input.readLine();
-				output.writeBytes(actionChoice);
+
+				switch(actionChoice){
+					case "1":
+					id = Integer.parseInt(input.readLine());
+					//WeatherServer.viewRequestStatus(id);
+					output.writeBytes("Printing...\n");
+					break;
+
+					case "2":
+					while (!(requestType.equals("1") || requestType.equals("2") || requestType.equals("3"))){
+						output.writeBytes("1. Average monthly max/min temperature\n");
+						output.writeBytes("2. Average yearly max/min temperature\n");
+						output.writeBytes("3. Month with highest/lowest temperature\n");
+						output.writeBytes("Choose a type of request\n\n");
+						requestType=input.readLine();
+
+						switch(requestType){
+							case "1":
+							output.writeBytes("Input station\n");
+							stationId=Integer.parseInt(input.readLine());
+							output.writeBytes("Input year\n");
+							year=Integer.parseInt(input.readLine());
+							output.writeBytes("Max or Min? (0 or 1)\n");
+							maxMin = input.readLine();
+							if(maxMin.equals("0")){ //execute commands
+							} else if(maxMin.equals("1")){
+							}
+							break;
+							case "2":
+							output.writeBytes("Input year\n");
+							year=Integer.parseInt(input.readLine());
+							output.writeBytes("Max or Min? (0 or 1)\n");
+							maxMin = input.readLine();
+							if(maxMin.equals("0")){
+							} else if(maxMin.equals("1")){
+							}
+							break;
+							case "3":
+							output.writeBytes("Input station\n");
+							stationId=Integer.parseInt(input.readLine());
+							output.writeBytes("Input year\n");
+							year=Integer.parseInt(input.readLine());
+							output.writeBytes("Max or Min? (0 or 1)\n");
+							maxMin = input.readLine();
+							if(maxMin.equals("0")){ //execute commands
+							} else if(maxMin.equals("1")){
+							}
+							break;
+						}
+					}
+					requestType="";
+					break;
+
+					case "3":
+					output.writeBytes("Input request ID to stop\n");
+					id = Integer.parseInt(input.readLine());
+					output.writeBytes("Removing request...\n");
+					//WeatherServer.stopRequest(id);
+					break;
+				}
 			}
-			while (actionChoice.equals("0"));
+			while (!actionChoice.equals("0"));
+		}
 			// take command from user
 			// e.g view request, create request, stop request, etc
 			// execute the command

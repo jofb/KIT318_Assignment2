@@ -91,17 +91,63 @@ public class UserConnection {
             // TODO this isn't done yet
             // user commands
 			String actionChoice="";
+			String requestType="";
+			String id="";
 			while (!(actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"))) {  //wait for valid response
 				do{
-				System.out.println("\nSelect your action:");
-				System.out.println("0. Quit");
-				System.out.println("1. Find average monthly maximum or minimum temperature of a given station id in a given year");
-				System.out.println("2. Find yearly average maximum or minimum temperature of all the stations in a given year");
-				System.out.println("3. Find month which has highest/lowest maximum temperature in a given year and station");
-	            actionChoice = br.readLine();
+					menuPrint(input);
+	            	actionChoice = br.readLine();
+					output.writeBytes(actionChoice+"\n");
+
+					switch(actionChoice){
+						case "1":
+							System.out.println("Input request ID to view");
+							output.writeBytes(br.readLine() +"\n");
+							System.out.println(input.readLine());
+							break;
+
+						case "2":
+							while (!(requestType.equals("1") || requestType.equals("2") || requestType.equals("3"))){
+								menuPrint(input);
+								requestType = br.readLine();
+								output.writeBytes(requestType+"\n");
+
+								switch(requestType){
+									case "1":
+									System.out.println(input.readLine()); //input station
+									output.writeBytes(br.readLine() +"\n");
+									System.out.println(input.readLine()); //input year
+									output.writeBytes(br.readLine() +"\n");
+									System.out.println(input.readLine()); //Max or Min
+									output.writeBytes(br.readLine() +"\n");
+									break;
+									case"2":
+									System.out.println(input.readLine()); //input year
+									output.writeBytes(br.readLine() +"\n");
+									System.out.println(input.readLine()); //Max or Min
+									output.writeBytes(br.readLine() +"\n");
+									break;
+									case "3":
+									System.out.println(input.readLine()); //input station
+									output.writeBytes(br.readLine() +"\n");
+									System.out.println(input.readLine()); //input year
+									output.writeBytes(br.readLine() +"\n");
+									System.out.println(input.readLine()); //Max or Min
+									output.writeBytes(br.readLine() +"\n");
+								}
+							}
+							requestType="";
+							break;
+
+						case "3":
+							System.out.println(input.readLine());
+							output.writeBytes(br.readLine() +"\n");
+							System.out.println(input.readLine());
+							break;
+					}
 				}
 				while(!actionChoice.equals("0"));
-				output.writeBytes(actionChoice+"\n");
+				
 			}
             
             // get the response from server

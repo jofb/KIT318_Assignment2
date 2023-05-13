@@ -174,7 +174,6 @@ public class WeatherServer{
 		}
 		return dataByYear;
 	}
-
 }
 
 class QueryResponse {
