@@ -25,6 +25,20 @@ public class UserConnection {
 		}
 	}
 	
+	// send an arbitrary number of user inputs to the server
+	private static void multiLineUserInput(BufferedReader serverInput, BufferedReader input, DataOutputStream output) throws IOException
+	{
+		// get as many inputs as the server needs by having the server first send that number
+		int inputs = serverInput.read();
+		for(int i = 0; i < inputs; i++)
+		{
+			// first read in the question from server
+			System.out.println(serverInput.readLine());
+			// next send the user input
+			output.writeBytes(input.readLine() + "\n");
+		}
+	}
+	
 	public static void main(String[] args) throws Exception {
 		try {
 			// change to match destination address
@@ -72,8 +86,7 @@ public class UserConnection {
 	            	do 
 	            	{
 	            		System.out.println(input.readLine());
-	            		System.out.println("Please enter password...");
-	            		
+
 	            		// send password attempt
 	            		String attempt = br.readLine();
 	            		output.writeBytes(attempt + "\n");
@@ -85,71 +98,62 @@ public class UserConnection {
 	            		System.out.println(input.readLine());
 
 	            	} while(!verified);
+	            	// if there was more to the verification, do it here
 	            	break;
             }
             
             // TODO this isn't done yet
             // user commands
 			String actionChoice="";
-			String requestType="";
-			String id="";
-			while (!(actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"))) {  //wait for valid response
-				do{
-					menuPrint(input);
-	            	actionChoice = br.readLine();
-					output.writeBytes(actionChoice+"\n");
 
-					switch(actionChoice){
-						case "1":
-							System.out.println("Input request ID to view");
-							output.writeBytes(br.readLine() +"\n");
-							System.out.println(input.readLine());
-							break;
-
-						case "2":
-							while (!(requestType.equals("1") || requestType.equals("2") || requestType.equals("3"))){
-								menuPrint(input);
-								requestType = br.readLine();
-								output.writeBytes(requestType+"\n");
-
-								switch(requestType){
-									case "1":
-									System.out.println(input.readLine()); //input station
-									output.writeBytes(br.readLine() +"\n");
-									System.out.println(input.readLine()); //input year
-									output.writeBytes(br.readLine() +"\n");
-									System.out.println(input.readLine()); //Max or Min
-									output.writeBytes(br.readLine() +"\n");
-									break;
-									case"2":
-									System.out.println(input.readLine()); //input year
-									output.writeBytes(br.readLine() +"\n");
-									System.out.println(input.readLine()); //Max or Min
-									output.writeBytes(br.readLine() +"\n");
-									break;
-									case "3":
-									System.out.println(input.readLine()); //input station
-									output.writeBytes(br.readLine() +"\n");
-									System.out.println(input.readLine()); //input year
-									output.writeBytes(br.readLine() +"\n");
-									System.out.println(input.readLine()); //Max or Min
-									output.writeBytes(br.readLine() +"\n");
-								}
-							}
-							requestType="";
-							break;
-
-						case "3":
-							System.out.println(input.readLine());
-							output.writeBytes(br.readLine() +"\n");
-							System.out.println(input.readLine());
-							break;
-					}
-				}
-				while(!actionChoice.equals("0"));
+			boolean validCommand = false;
+			
+			menuPrint(input);
+			
+			while(!validCommand)
+			{
+				// user input
+				actionChoice = br.readLine();
+				output.writeBytes(actionChoice + "\n");
 				
+				// check if valid 
+				validCommand = input.read() != 0;
+				
+				// response message
+				System.out.println(input.readLine());
 			}
-            
+			// it is now a valid command
+			
+			switch(actionChoice)
+			{
+			case "1":
+			case "3":
+				// get the user input for one line
+				System.out.println(input.readLine());
+				output.writeBytes(br.readLine() + "\n");
+				break;
+				
+			case "2":
+				// print out a second menu
+				menuPrint(input);
+				// and validate the command
+				validCommand = false;
+				while(!validCommand)
+				{
+					actionChoice = br.readLine();
+					output.writeBytes(actionChoice + "\n");
+					
+					// check if valid
+					validCommand = input.read() != 0;
+					
+					// response
+					System.out.println(input.readLine());
+				}
+				// now have a valid command
+				// input multiple lines (arbitrary number)
+				multiLineUserInput(input, br, output);
+			}
+
             // get the response from server
             line = input.readLine();
             System.out.println(line);

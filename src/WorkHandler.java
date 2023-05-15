@@ -72,8 +72,9 @@ class WorkHandler extends Thread {
 				// for case 1, the response is the requestId associated with the created request
 				// for case 2, the response is the status of the request
 				// for case 3, the response is confirmation of the cancellation of request
-
-				QueryResponse response = new QueryResponse("this is a really cool response!");
+				String r = query.queryParams.toString();
+				QueryResponse response = new QueryResponse("Your query: " + r);
+				System.out.println("I'm handling this query: " + response.responseBody);
 				query.response = response;
 				// then notify the connection thread that this query has a response ready
 				synchronized(query)

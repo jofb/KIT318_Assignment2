@@ -89,21 +89,19 @@ public class WeatherServer{
     public static void setPasswordList(List<String> passwordList) {
         WeatherServer.passwordList = passwordList;
     }
-	
-    /* add request to queue */
-    public static Query addRequest(QueryType _requestType, String _query) 
+
+    /* add query to queue */
+    public static void addQuery(Query q)
     {
     	queryCounter++;
-    	// add new query to queue
-    	Query query = new Query(queryCounter, _requestType, _query);
-    	queryQueue.add(query);
+    	// add to queue
+    	q.queryId = queryCounter;
+    	queryQueue.add(q);
     	
-    	// notify the work handler
     	synchronized(queryQueue)
     	{
-        	queryQueue.notify();
+    		queryQueue.notify();
     	}
-    	return query;
     }
 	
 	//gets a line of data from the file, splits it by commas, gets the relevant data, and returns it as a list
@@ -188,10 +186,15 @@ class QueryResponse {
 class Query {
 	int queryId;
 	QueryType queryType;
-	String queryParams;
+	Map<String, String> queryParams;
 	QueryResponse response;
 	
-	Query(int id, QueryType type, String params)
+	Query(int id)
+	{
+		queryId = id;
+	}
+	
+	Query(int id, QueryType type, Map<String, String> params)
 	{
 		queryId = id;
 		queryType = type;

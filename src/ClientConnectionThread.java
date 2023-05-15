@@ -69,7 +69,7 @@ class ClientConnectionThread extends Thread {
 				boolean successfulPassword = false;
 				
 				while (!successfulPassword) {
-					output.writeBytes("Please input your password to be able to manage requests:\n");
+					output.writeBytes("Please enter password...\n");
 
 					// password attempt
 					String attempt = input.readLine();  
@@ -83,7 +83,7 @@ class ClientConnectionThread extends Thread {
 					// verification message
 					if(successfulPassword)
 					{
-						output.writeBytes("Your password has been verified. Continuing to the next menu...\n");
+						output.writeBytes("Your password has been verified.\n");
 					} else {
 						output.writeBytes("Incorrect password...\n");
 					}
@@ -91,108 +91,122 @@ class ClientConnectionThread extends Thread {
 				//from here goes to the "read command from user" section
 			}
 			
+			/* Command selection */
+
+			Query query = new Query(0);
 			
-			/*** TODO Read command from user (this is where the loop would be) ***/
-			/** TODO this should print out the options: view, create, stop request (or exit) */
-			// create request gives you the three request type options, then takes in the input for the request
-			// view request takes in a request id
-			// stop request takes in a request id
 			String actionChoice="";
-			String requestType="";
-			int stationId;
-			int year;
-			String maxMin;
-			int id;
-			while (!(actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"))) { 
-			do{
-				output.writeBytes("0. Quit\n");
-				output.writeBytes("1. View requests\n");
-				output.writeBytes("2. Create request\n");
-				output.writeBytes("3. Stop request\n");
-				output.writeBytes("Select your action:\n\n");
+			Map<String, String> queryParams = new HashMap<String, String>();
+			
+			boolean validCommand = false;
+			// print out the first menu
+			output.writeBytes("Select your action...\n");
+			output.writeBytes("0. Quit\n");
+			output.writeBytes("1. View request\n");
+			output.writeBytes("2. Create request\n");
+			output.writeBytes("3. Stop request\n\n");
+			
+			// validate the first menu input
+			while(!validCommand)
+			{
 				actionChoice = input.readLine();
-
-				switch(actionChoice){
-					case "1":
-					id = Integer.parseInt(input.readLine());
-					//WeatherServer.viewRequestStatus(id);
-					output.writeBytes("Printing...\n");
-					break;
-
-					case "2":
-					while (!(requestType.equals("1") || requestType.equals("2") || requestType.equals("3"))){
-						output.writeBytes("1. Average monthly max/min temperature\n");
-						output.writeBytes("2. Average yearly max/min temperature\n");
-						output.writeBytes("3. Month with highest/lowest temperature\n");
-						output.writeBytes("Choose a type of request\n\n");
-						requestType=input.readLine();
-
-						switch(requestType){
-							case "1":
-							output.writeBytes("Input station\n");
-							stationId=Integer.parseInt(input.readLine());
-							output.writeBytes("Input year\n");
-							year=Integer.parseInt(input.readLine());
-							output.writeBytes("Max or Min? (0 or 1)\n");
-							maxMin = input.readLine();
-							if(maxMin.equals("0")){ //execute commands
-							} else if(maxMin.equals("1")){
-							}
-							break;
-							case "2":
-							output.writeBytes("Input year\n");
-							year=Integer.parseInt(input.readLine());
-							output.writeBytes("Max or Min? (0 or 1)\n");
-							maxMin = input.readLine();
-							if(maxMin.equals("0")){
-							} else if(maxMin.equals("1")){
-							}
-							break;
-							case "3":
-							output.writeBytes("Input station\n");
-							stationId=Integer.parseInt(input.readLine());
-							output.writeBytes("Input year\n");
-							year=Integer.parseInt(input.readLine());
-							output.writeBytes("Max or Min? (0 or 1)\n");
-							maxMin = input.readLine();
-							if(maxMin.equals("0")){ //execute commands
-							} else if(maxMin.equals("1")){
-							}
-							break;
-						}
-					}
-					requestType="";
-					break;
-
-					case "3":
-					output.writeBytes("Input request ID to stop\n");
-					id = Integer.parseInt(input.readLine());
-					output.writeBytes("Removing request...\n");
-					//WeatherServer.stopRequest(id);
-					break;
+				validCommand = (actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"));
+				output.writeBoolean(validCommand);
+				if(!validCommand)
+				{
+					output.writeBytes("Please enter a valid command\n");
+				} else {
+					output.writeBytes("\n");
 				}
 			}
-			while (!actionChoice.equals("0"));
-		}
+			// at this point actionChoice is now valid, so continue
+			switch(actionChoice)
+			{
+			case "1":
+				output.writeBytes("Enter a request ID...\n");
+				queryParams.put("requestId", input.readLine());
+				query.queryType = QueryType.VIEW;
+				break;
+			case "2":
+				query.queryType = QueryType.CREATE;
+				// need to validate command again
+				validCommand = false;
+				// print second menu
+				output.writeBytes("Choose a request type...\n");
+				output.writeBytes("1. Average monthly max/min temperature\n");
+				output.writeBytes("2. Average yearly max/min temperature\n");
+				output.writeBytes("3. Month with highest/lowest temperature\n\n");
+
+				// validate inner command
+				while(!validCommand)
+				{
+					actionChoice = input.readLine();
+					validCommand = (actionChoice.equals("0") ||actionChoice.equals("1") || actionChoice.equals("2") || actionChoice.equals("3"));
+					output.writeBoolean(validCommand);
+					if(!validCommand)
+					{
+						output.writeBytes("Please enter a valid command\n");
+					} else {
+						output.writeBytes("\n");
+					}
+				}
+				// now validated
+				switch(actionChoice)
+				{
+				case "1":
+					// no input validation here
+					// this is the number of inputs we need from user
+					output.write(3);
+					output.writeBytes("Enter a station ID: \n");
+					queryParams.put("stationId", input.readLine());
+					output.writeBytes("Enter a year: \n");
+					queryParams.put("year", input.readLine());
+					output.writeBytes("Minimum (0) or maximum (1) temperatures? \n");
+					queryParams.put("minMax", input.readLine());
+					break;
+				case "2":
+					output.write(2);
+					output.writeBytes("Enter a year: \n");
+					queryParams.put("year", input.readLine());
+					output.writeBytes("Minimum (0) or maximum (1) temperatures? \n");
+					queryParams.put("minMax", input.readLine());
+					break;
+				case "3":
+					output.write(3);
+					output.writeBytes("Enter a station ID: \n");
+					queryParams.put("stationId", input.readLine());
+					output.writeBytes("Enter a year: \n");
+					queryParams.put("year", input.readLine());
+					output.writeBytes("Lowest (0) or highest (1) temperatures? \n");
+					queryParams.put("minMax", input.readLine());
+					break;
+				}
+				break;
+			case "3":
+				output.writeBytes("Enter a request ID...\n");
+				queryParams.put("requestId", input.readLine());
+				query.queryType = QueryType.STOP;
+				break;
+			}
+			query.queryParams = queryParams;
+			
 			// take command from user
 			// e.g view request, create request, stop request, etc
 			// execute the command
 			// all commands will have to go back through the server to get the information from workers, so 
 			// feel free to make getters/setters on the server
-			
-			//use verifiedPassword here, as this has been confirmed to be right. Put in a map with request id and stuff?
-			
-			// TODO change this to the correct request with correct params
-			Query q = WeatherServer.addRequest(QueryType.CREATE, "");
+
+			WeatherServer.addQuery(query);
 			
 			// wait for query to be notified (when the response is ready)
-			synchronized(q)
+			synchronized(query)
 			{
-				q.wait();
+				query.wait();
 			}
 
-			output.writeBytes("Response: " + q.response.responseBody + "\n");
-			requestQueue.remove(q);
+			// TODO can change this to format response body
+			output.writeBytes("Response: " + query.response.responseBody + "\n");
+			requestQueue.remove(query);
 			// closing streams
 			input.close();
 			output.close();
