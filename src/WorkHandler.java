@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
@@ -17,8 +18,7 @@ class WorkHandler extends Thread {
 	
 	Socket serverClient;
 	int clientNumber;
-	// this should really be a list (temporary)
-	WorkerNode w1, w2, w3;
+	WorkerNode[] workerArray = new WorkerNode[5];  //array of our workers, up to our max of 5
 	
 	// queue of responses
 	Queue<Query> requestQueue;
@@ -31,10 +31,10 @@ class WorkHandler extends Thread {
 	}
 	
 	public void run() {
-		// lets create a couple of worker nodes
-		w1 = new WorkerNode(8886);
-		w2 = new WorkerNode(8887);
-		w3 = new WorkerNode(8889);
+		//puts the always on worker nodes into our array of 5
+		for(int i = 0; i < 3; i++) {
+			   workerArray[i] = new WorkerNode(8080+i); //different port for each worker
+			}
 
 		while(true)
 		{
@@ -89,7 +89,21 @@ class WorkHandler extends Thread {
 			
 			for(WorkUnit work : workQueue)
 			{
-				// allocate each work unit to available workers
+				//i feel like we might run into the the problem of the data.txt file being written over as the 
+				//work node doesn't get to it in time. But, i could be wrong
+				try {
+					String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
+				    String filePath = homeDir + "/data.txt"; // sets the file path for the doc
+				    FileWriter writer = new FileWriter(filePath);
+				    
+				    //writes the data to the file. Should be noted that each line of the data needs to be 
+				    //separated by something, and that can't be commas as we're already using that to separate
+				    //elements in the line itself. Use \n, imo
+					writer.write(work.data);
+		            writer.flush();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 			}
 		}
 	}
