@@ -33,7 +33,7 @@ public class WorkNode {
 		return lines;
 	}
 	
-	public void main(String[] args) throws Exception
+	public static void main(String[] args) throws Exception
 	{
 		// the worker node is a server in of itself, it waits for connections from the weather server
 		ServerSocket worker = new ServerSocket(8888);
@@ -41,6 +41,8 @@ public class WorkNode {
 		Socket weatherServer;
 		BufferedReader input;
 		DataOutputStream output;
+		
+		downloadFile();
 		
 		// TODO this needs some sort of exit condition
 		while(true)
@@ -108,33 +110,34 @@ public class WorkNode {
 	
 	public static void downloadFile() {
 
-		try {
+//		try {
 			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
 			String host = "203.101.228.83";  //ip of our weather server. CHANGE THIS?
 			String user = "ubuntu";
-			String privateKey = homeDir + "/tut7.pem"; //this is the bugged line. Probably a .pem
+			System.out.println(homeDir);
+			String privateKey = homeDir + "/Downloads/tut7.pem"; //this is the bugged line. Probably a .pem
 			JSch jsch = new JSch();
-			Session session = jsch.getSession(user, host, 22);
-			Properties config = new Properties();
-			jsch.addIdentity(privateKey);
-			System.out.println("identity added ");
-			config.put("StrictHostKeyChecking", "no");
-			session.setConfig(config);
-			session.connect();
-
-			Channel channel = session.openChannel("sftp");
-			channel.connect();
-			ChannelSftp sftpChannel = (ChannelSftp) channel;
-			sftpChannel.get("/home/ubuntu/data.txt", homeDir + "/transferred_data.txt");
-
-			sftpChannel.exit();
-			session.disconnect();
-		} catch (JSchException e) {
-			e.printStackTrace();
-		} catch (SftpException e) {
-			e.printStackTrace();
-		} catch (Exception e) {
-			System.out.println(e);
-		}
+//			Session session = jsch.getSession(user, host, 22);
+//			Properties config = new Properties();
+//			jsch.addIdentity(privateKey);
+//			System.out.println("identity added ");
+//			config.put("StrictHostKeyChecking", "no");
+//			session.setConfig(config);
+//			session.connect();
+//
+//			Channel channel = session.openChannel("sftp");
+//			channel.connect();
+//			ChannelSftp sftpChannel = (ChannelSftp) channel;
+//			sftpChannel.get("/home/ubuntu/data.txt", homeDir + "/transferred_data.txt");
+//
+//			sftpChannel.exit();
+//			session.disconnect();
+//		} catch (JSchException e) {
+//			e.printStackTrace();
+//		} catch (SftpException e) {
+//			e.printStackTrace();
+//		} catch (Exception e) {
+//			System.out.println(e);
+//		}
 	}
 }
