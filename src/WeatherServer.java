@@ -44,7 +44,7 @@ public class WeatherServer{
 			// list of client threads
 			List<ClientConnectionThread> serverThreads = new ArrayList<>();
 			
-//			List<String> Data = processData();
+//			List<String> Data = processData("C:\\Users\\adaml\\Downloads\\1863.csv");
 //			HashMap<String, List<String>> dataByID = dataIDSplit(Data);
 //			HashMap<String, List<String>> dataByYear = dataYearSplit(Data);
 			
@@ -105,9 +105,9 @@ public class WeatherServer{
     }
 	
 	//gets a line of data from the file, splits it by commas, gets the relevant data, and returns it as a list
-	private static List<String> processData() throws FileNotFoundException {		
-		//CHANGE THIS TO YOUR FILE LOCATION
-		Scanner sc = new Scanner(new File("C:\\Users\\adaml\\Downloads\\1863.csv"));  
+	private static List<String> processData(String path) throws FileNotFoundException {		
+		Scanner sc = new Scanner(new File(path));  
+		
 		List<String> allData = new ArrayList<String>();  //list of all our data
 		
 		do {			
@@ -128,6 +128,7 @@ public class WeatherServer{
 	private static HashMap<String, List<String>> dataIDSplit(List<String> data) {
 		HashMap<String, List<String>> dataByID = new HashMap<String, List<String>>();  //data sorted by weather station ID
 		
+		// data = (id, date, value type, temp) (every single one)
 		for (String item:data) {
 			String[] splitLine = item.split(",");  //temporary string array for split csv data
 			List<String> newList = new ArrayList<String>();  //new list for if one is needed in the data hashmap
@@ -145,6 +146,30 @@ public class WeatherServer{
 			}
 		}
 		return dataByID;
+	}
+	
+	/* Splits dataset based on given delimiter (0 - 3) */
+	private static HashMap<String, List<String>> dataSplit(List<String> data, int delimiter) throws Exception
+	{
+		// this could be better (yucky manual 0 or 3) but is ok
+		if(delimiter < 0 || delimiter > 3) throw new Exception("Invalid delimiter when splitting data");
+		
+		HashMap<String, List<String>> mappedData = new HashMap<String, List<String>>();
+
+		for(String item : data)
+		{
+			// create the key based on the delimiter
+			String[] line = item.split(",");
+			String key = line[delimiter];
+			
+			// create new list
+			if(!mappedData.containsKey(key))
+			{
+				mappedData.put(key, new ArrayList<String>());
+			}
+			mappedData.get(key).add(item);
+		}
+		return mappedData;
 	}
 	
 	//splits the data so that it is a hashmap, with the key as the year and value of a list of strings,

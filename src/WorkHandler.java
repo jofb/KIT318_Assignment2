@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,11 +18,18 @@ class WorkHandler extends Thread {
 	
 	Socket serverClient;
 	int clientNumber;
+	
+	int requestCounter = 0;
+	
 	// this should really be a list (temporary)
 	WorkerNode w1, w2, w3;
 	
 	// queue of responses
 	Queue<Query> requestQueue;
+	
+	// map from requestid to array of results
+	// this still isn't perfect, look at finding a better way 
+	Map<Integer, int[]> results = new HashMap<Integer, int[]>();
 
 	
 	Queue<WorkUnit> workQueue = new LinkedBlockingQueue<WorkUnit>();
@@ -66,7 +74,32 @@ class WorkHandler extends Thread {
 				
 				// 3. cancel request
 				//		remove all work units associated with request id from queue
-				
+				Map<String, String> params = query.queryParams;
+				int id;
+				switch(query.queryType)
+				{
+				case CREATE:
+					createRequest(params);
+					break;
+				case VIEW:
+					id = Integer.parseInt(params.get("requestId"));
+					// find out status of the id
+					// (i.e compare the number of results to the total of expected results)
+					break;
+				case STOP:
+					id = Integer.parseInt(params.get("requestId"));
+					// cancel this id
+					for(WorkUnit work : workQueue)
+					{
+						if(work.requestId == id)
+						{
+							workQueue.remove(work);
+						}
+					}
+					// would also need to remove it from whatever results mapping we have
+					results.remove(id);
+					break;
+				}
 				// once done, create a QueryResponse object and attach to the query\
 				
 				// for case 1, the response is the requestId associated with the created request
@@ -85,12 +118,76 @@ class WorkHandler extends Thread {
 
 			// poll workers and check if there are any results
 			
+			/* for worker in workers
+			 *   if !worker.running 
+			 *      break
+			 *   
+			 *   (black box) check if worker is done, get back some workResults + request id
+			 *   results.put(requestid, workResults)
+			 * 
+			 */
+			
 			// add any results to some results queue, which can then be read when requesting to see results
 			
 			for(WorkUnit work : workQueue)
 			{
 				// allocate each work unit to available workers
+				
+				// if there is more work than running workers, may need to create more? not sure
 			}
+		}
+	}
+	private void createRequest(Map<String, String> params)
+	{
+		// get the request type (to be used in a switch statement)
+		int requestType = Integer.parseInt(params.get("requestType"));
+		
+		// for niceness lets assume requestType == 1
+		// but this should really be a switch, unless we can combine the conditions into one piece of functionality
+		
+		// avg monthly
+		String stationId = params.get("stationId");
+		String year = params.get("year");
+		int minMax = Integer.parseInt(params.get("minMax"));
+		
+		int requestId = requestCounter;
+		requestCounter++;
+		
+		Map<String, List<Integer>> work = new HashMap<String, List<Integer>>();
+		
+		// TODO iterate over data, create new mapping for each station-month
+		
+		/* some pesudo code
+		 * 
+		 * for data in dataset:
+		 *   if year == data.year and stationid == data.stationId and minMax == data.minMax
+		 *     if work.get('stationid-month') doesn't exist:
+		 *       work.add('stationid-month', new array list)
+		 *     
+		 *     work.get('stationid-month').add(temp)
+ 		 *     
+		 * 
+		 */
+		
+		// create a new results array the size of the array of work units
+		results.put(requestId, new int[work.entrySet().size()]);
+
+		for (Map.Entry<String, List<Integer>> entry : work.entrySet())
+		{
+			// use these to write to file
+			String key = entry.getKey();
+			List<Integer> values = entry.getValue();
+			
+			String filename = requestId + "_" + key;
+			// TODO write to file 
+			// ...
+			
+			// create new work unit, pass in file name, then add to queue
+			WorkUnit w = new WorkUnit();
+			w.requestId = requestId;
+			w.requestType = requestType;
+			w.data = filename;	
+			workQueue.add(w);
 		}
 	}
 }
@@ -100,7 +197,6 @@ class WorkUnit {
 	Integer requestId;
 	Integer requestType;
 	String data; 
-	Integer workId; // TODO might not be necessary
 }
 
 

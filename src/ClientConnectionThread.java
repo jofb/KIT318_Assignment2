@@ -150,6 +150,7 @@ class ClientConnectionThread extends Thread {
 						output.writeBytes("\n");
 					}
 				}
+				queryParams.put("requestType", actionChoice);
 				// now validated
 				switch(actionChoice)
 				{
