@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.SynchronousQueue;
 
 /*** This thread will be in charge of handling all worker nodes and reading from the work queue ***/
 
@@ -19,6 +18,9 @@ class WorkHandler extends Thread {
 
 	Socket serverClient;
 	int clientNumber;
+	
+	int requestCounter = 0;
+	
 	WorkerNode[] workerArray = new WorkerNode[5];  //array of our workers, up to our max of 5
 
 	// queue of responses
