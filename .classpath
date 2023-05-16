@@ -6,7 +6,7 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/adaml/Downloads/HowtodownloadandUploadFileinJavaUSING-JSCH library/HowtodownloadandUploadFileinJavaUSING-JCH library/jsch-0.1.55.jar">
+	<classpathentry kind="lib" path="C:/Users/Jordan/eclipse-workspace/KIT318_Assignment2/jsch-0.1.55.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>

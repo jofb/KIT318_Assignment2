@@ -132,19 +132,19 @@ class WorkHandler extends Thread {
 			{
 				//i feel like we might run into the the problem of the data.txt file being written over as the
 				//work node doesn't get to it in time. But, i could be wrong
-				try {
-					String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-				    String filePath = homeDir + "/data.txt"; // sets the file path for the doc
-				    FileWriter writer = new FileWriter(filePath);
-
-				    //writes the data to the file. Should be noted that each line of the data needs to be
-				    //separated by something, and that can't be commas as we're already using that to separate
-				    //elements in the line itself. Use \n, imo
-					writer.write(work.data);
-		            writer.flush();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+//				try {
+//					String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
+//				    String filePath = homeDir + "/data.txt"; // sets the file path for the doc
+//				    FileWriter writer = new FileWriter(filePath);
+//
+//				    //writes the data to the file. Should be noted that each line of the data needs to be
+//				    //separated by something, and that can't be commas as we're already using that to separate
+//				    //elements in the line itself. Use \n, imo
+//					writer.write(work.data);
+//		            writer.flush();
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
 			}
 		}
 	}
