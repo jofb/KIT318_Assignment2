@@ -30,6 +30,7 @@ class WorkHandler extends Thread {
 	// this still isn't perfect, look at finding a better way
 	Map<Integer, int[]> results = new HashMap<Integer, int[]>();
 
+
 	Queue<WorkUnit> workQueue = new LinkedBlockingQueue<WorkUnit>();
 
 	WorkHandler(Queue<Query> requestQueue) {
@@ -83,10 +84,6 @@ class WorkHandler extends Thread {
 					id = Integer.parseInt(params.get("requestId"));
 					// find out status of the id
 					// (i.e compare the number of results to the total of expected results)
-					
-					// expected outcome for this is:
-					// if the request is done, then its results + times + bill
-					// if its not done, then the status (5/10 work units done etc)
 					break;
 				case STOP:
 					id = Integer.parseInt(params.get("requestId"));
@@ -119,15 +116,6 @@ class WorkHandler extends Thread {
 			}
 
 			// poll workers and check if there are any results
-
-			// iterating over each worker
-			try {
-				Socket socket = new Socket("127.0.0.1", 8889);
-				BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-				// grab the results etc
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-			}
 
 			/* for worker in workers
 			 *   if !worker.running
@@ -229,7 +217,6 @@ class WorkUnit {
 class WorkerNode {
 	int port;
 	boolean running;
-	// variables here for authentication
 
 	WorkerNode(int p) {
 		port = p;
