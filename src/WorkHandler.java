@@ -23,18 +23,20 @@ class WorkHandler extends Thread {
 	
 	WorkerNode[] workerArray = new WorkerNode[5];  //array of our workers, up to our max of 5
 
-	// queue of responses
-	Queue<Query> requestQueue;
+	// queue of queries
+	Queue<Query> queryQueue;
+	
+	// queue of requests
+	Queue<Request> requestQueue;
 
-	// map from requestid to array of results
-	// this still isn't perfect, look at finding a better way
-	Map<Integer, int[]> results = new HashMap<Integer, int[]>();
+	// map from requestid to request object
+	Map<Integer, Request> requests = new HashMap<Integer, Request>();
 
 
 	Queue<WorkUnit> workQueue = new LinkedBlockingQueue<WorkUnit>();
 
 	WorkHandler(Queue<Query> requestQueue) {
-		this.requestQueue = requestQueue;
+		this.queryQueue = requestQueue;
 	}
 
 	public void run() {
@@ -48,18 +50,18 @@ class WorkHandler extends Thread {
 			// feel free to get rid of this
 			System.out.println("Waiting for Requests...");
 			// wait for updates to request queue
-			synchronized(requestQueue)
+			synchronized(queryQueue)
 			{
 				try {
 					// this will wait until requestQueue is notified, OR 1 minute TODO change to 5 (or w/e is appropriate)
-					requestQueue.wait(60000);
+					queryQueue.wait(60000);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
 
 
-			for(Query query : requestQueue)
+			for(Query query : queryQueue)
 			{
 				// parse each query and handle
 
@@ -96,7 +98,7 @@ class WorkHandler extends Thread {
 						}
 					}
 					// would also need to remove it from whatever results mapping we have
-					results.remove(id);
+//					results.remove(id);
 					break;
 				}
 				// once done, create a QueryResponse object and attach to the query\
@@ -152,36 +154,106 @@ class WorkHandler extends Thread {
 	{
 		// get the request type (to be used in a switch statement)
 		int requestType = Integer.parseInt(params.get("requestType"));
-
-		// for niceness lets assume requestType == 1
-		// but this should really be a switch, unless we can combine the conditions into one piece of functionality
-
-		// avg monthly
-		String stationId = params.get("stationId");
-		String year = params.get("year");
-		int minMax = Integer.parseInt(params.get("minMax"));
-
+		
 		int requestId = requestCounter;
 		requestCounter++;
 
 		Map<String, List<Integer>> work = new HashMap<String, List<Integer>>();
+		
+		String option;
+		String id;
+		
+		switch(requestType)
+		{
+		// avg monthly temp by id-year
+		case 1:
+			id = params.get("stationId");
 
-		// TODO iterate over data, create new mapping for each station-month
+			option = (params.get("minMax") == "0")? "TMIN" : "TMAX";
 
-		/* some pesudo code
-		 *
-		 * for data in dataset:
-		 *   if year == data.year and stationid == data.stationId and minMax == data.minMax
-		 *     if work.get('stationid-month') doesn't exist:
-		 *       work.add('stationid-month', new array list)
-		 *
-		 *     work.get('stationid-month').add(temp)
- 		 *
-		 *
-		 */
+			// grab the dataset by station id
+			List<String> station = WeatherServer.dataByID.get(id);
+			
+			// iterate over station
+			for(String data : station)
+			{
+				String[] line = data.split(",");
+				
+				if(line[2] != option && line[1].substring(0, 4) != params.get("year")) continue;
+				
+				// get parts of the line
+				String date = line[1];
+				String month = date.substring(4, 6);
 
-		// create a new results array the size of the array of work units
-		results.put(requestId, new int[work.entrySet().size()]);
+				int temp = Integer.parseInt(line[3]);
+				
+				// form the key from the month and id
+				String key = id + "_" + month;
+				
+				if(!work.containsKey(key))
+				{
+					work.put(key, new ArrayList<Integer>());
+				}
+				
+				work.get(key).add(temp);
+			}
+			break;
+			// yearly average by year
+		case 2:
+			option = (params.get("minMax") == "0")? "TMIN" : "TMAX";
+			
+			List<String> year = WeatherServer.dataByYear.get(params.get("year"));
+			
+			for(String data : year)
+			{
+				String[] line = data.split(",");
+				if(line[2] != option) continue;
+				
+				String stationId = line[0];
+				
+				int temp = Integer.parseInt(line[3]);
+				
+				String key = stationId;
+				
+				if(!work.containsKey(key))
+				{
+					work.put(key, new ArrayList<Integer>());
+				}
+				work.get(key).add(temp);
+			}
+			break;
+			// month which has highest/lowest max temperature in given year and station
+		case 3:
+			// TODO not done yet
+			id = params.get("stationId");
+			
+			int highLow = Integer.parseInt(params.get("minMax"));
+			
+			List<String> st = WeatherServer.dataByID.get(params.get(id));
+			
+			for(String data : st)
+			{
+				String[] line = data.split(",");
+				
+				if(line[2] != "TMAX" && line[1].substring(0, 4) != params.get("year")) continue;
+				
+				String date = line[1];
+				String month = line[1].substring(4, 6);
+				
+				int temp = Integer.parseInt(line[3]);
+				
+				String key = id + "_" + month;
+				
+				if(!work.containsKey(key))
+				{
+					work.put(key, new ArrayList<Integer>());
+				}
+				work.get(key).add(temp);
+			}
+			break;
+		}
+		Request r = new Request(requestId, 2, work.entrySet().size());
+		requests.put(requestId, r);
 
 		for (Map.Entry<String, List<Integer>> entry : work.entrySet())
 		{
@@ -200,6 +272,41 @@ class WorkHandler extends Thread {
 			w.data = filename;
 			workQueue.add(w);
 		}
+	}
+}
+
+// go ahead with creating a request object
+
+// have a steps variable
+// set the bad cases one to TWO steps
+// and then when the list of results is filled up
+// create a NEW work unit from the results
+// pass into queue with the request id
+
+class Request {
+	int id;
+	int step;
+	int totalSteps;
+	int expectedResults;
+	List<Integer> results;
+	
+	Request(int id, int steps, int expectedResults) 
+	{
+		this.id = id;
+		this.totalSteps = steps;
+		this.expectedResults = expectedResults;
+		
+		this.step = 1;
+	}
+	
+	// not implemented
+	void checkStatus()
+	{
+		// compare step to total steps
+		double mod = step / totalSteps;
+		
+		// then compare expected results to size of results
+		double r = results.size() / expectedResults;
 	}
 }
 

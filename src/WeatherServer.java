@@ -24,6 +24,9 @@ public class WeatherServer{
 	
 	// list of passwords for registered users
     static List<String> passwordList = new ArrayList<String>();
+    
+    public static Map<String, List<String>> dataByID;
+    public static Map<String, List<String>> dataByYear;
 
 	public static void main(String[] args) throws Exception {
 		
@@ -44,6 +47,12 @@ public class WeatherServer{
 			// list of client threads
 			List<ClientConnectionThread> serverThreads = new ArrayList<>();
 			
+			// TODO add the dataset here
+			List<String> data = processData("");
+
+			dataByID = dataSplit(data, 0);
+//			dataByYear = dataSplit(data, 1); // fix this to just use a second dataset for diff year
+
 //			List<String> Data = processData("C:\\Users\\adaml\\Downloads\\1863.csv");
 //			HashMap<String, List<String>> dataByID = dataIDSplit(Data);
 //			HashMap<String, List<String>> dataByYear = dataYearSplit(Data);
@@ -103,7 +112,7 @@ public class WeatherServer{
     		queryQueue.notify();
     	}
     }
-	
+
 	//gets a line of data from the file, splits it by commas, gets the relevant data, and returns it as a list
 	private static List<String> processData(String path) throws FileNotFoundException {		
 		Scanner sc = new Scanner(new File(path));  
@@ -123,32 +132,12 @@ public class WeatherServer{
 		return allData;
 	}
 	
-	//splits the data so that it is a hashmap, with the key as the weather station ID and value of a list of strings,
-	//each of which is our data in the format (id,date,value type,temp)
-	private static HashMap<String, List<String>> dataIDSplit(List<String> data) {
-		HashMap<String, List<String>> dataByID = new HashMap<String, List<String>>();  //data sorted by weather station ID
-		
-		// data = (id, date, value type, temp) (every single one)
-		for (String item:data) {
-			String[] splitLine = item.split(",");  //temporary string array for split csv data
-			List<String> newList = new ArrayList<String>();  //new list for if one is needed in the data hashmap
-			
-			if (dataByID.isEmpty()) {  //if the hashmap is completely empty				
-				newList.add(item);  //adds our item to the empty list
-				dataByID.put(splitLine[0], newList);  //adds to the hashmap. key is weather station and value is the list (which has just one data point here)
-			} else {
-				if (dataByID.containsKey(splitLine[0])) {  //if the weather station id is a key within the hashmap
-					dataByID.get(splitLine[0]).add(item);  //gets the value associated with the station id (a list) and adds the new data to that list
-				} else {
-					newList.add(item);  //adds our item to the empty list
-					dataByID.put(splitLine[0], newList);  //adds to the hashmap. key is weather station and value is the list (which has just one data point here)
-				}
-			}
-		}
-		return dataByID;
-	}
-	
-	/* Splits dataset based on given delimiter (0 - 3) */
+	/**
+	 * Maps a dataset to a given delimiter key. (station_id, date, value type, temperature)
+	 * @param data The data to split/map
+	 * @param delimiter The delimiter to split by (0 - 3), as defined in processData
+	 * @return The new mapped dataset
+	 */
 	private static HashMap<String, List<String>> dataSplit(List<String> data, int delimiter) throws Exception
 	{
 		// this could be better (yucky manual 0 or 3) but is ok
@@ -162,6 +151,9 @@ public class WeatherServer{
 			String[] line = item.split(",");
 			String key = line[delimiter];
 			
+			// special case for year (not great)
+			if(delimiter == 1) key = key.substring(0, 4);
+			
 			// create new list
 			if(!mappedData.containsKey(key))
 			{
@@ -170,32 +162,6 @@ public class WeatherServer{
 			mappedData.get(key).add(item);
 		}
 		return mappedData;
-	}
-	
-	//splits the data so that it is a hashmap, with the key as the year and value of a list of strings,
-	//each of which is our data in the format (id,date,value type,temp)
-	//see dataIDSplit for all comments, as this is mostly the same code so I've only commented the different parts
-	private static HashMap<String, List<String>> dataYearSplit(List<String> data) {
-		HashMap<String, List<String>> dataByYear = new HashMap<String, List<String>>();  //data sorted by weather station ID
-		
-		for (String item:data) {
-			String[] splitLine = item.split(",");
-			List<String> newList = new ArrayList<String>();
-			String year = splitLine[1].substring(0,4);  //string which gets the date and then the first 4 characters of the date, which is the year
-			
-			if (dataByYear.isEmpty()) {			
-				newList.add(item);
-				dataByYear.put(year, newList);  //now we use the year as the key, instead of id like in the other method. Everything else is the same.
-			} else {
-				if (dataByYear.containsKey(year)) {
-					dataByYear.get(year).add(item);
-				} else {
-					newList.add(item);
-					dataByYear.put(year, newList); 
-				}
-			}
-		}
-		return dataByYear;
 	}
 }
 
