@@ -11,6 +11,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Base64;
+import org.openstack4j.api.Builders;
+import org.openstack4j.api.OSClient.OSClientV3;
+import org.openstack4j.model.common.Identifier;
+import org.openstack4j.model.compute.Flavor;
+import org.openstack4j.model.compute.Server;
+import org.openstack4j.model.compute.ServerCreate;
+import org.openstack4j.model.image.Image;
+import org.openstack4j.openstack.OSFactory;
 
 /*** This thread will be in charge of handling all worker nodes and reading from the work queue ***/
 
@@ -324,16 +333,34 @@ class WorkUnit {
 class WorkerNode {
 	int port;
 	boolean running;
-
+	OSClientV3 os= null;
+	String ipAddress;
+	
 	WorkerNode(int p) {
 		port = p;
 		running = false;
+		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
+				.endpoint("https://keystone.rc.nectar.org.au:5000/v3")//Openstack endpoint
+				.credentials("XYZ@utas.edu.au", "YOUR PASSWORD",Identifier.byName("Default"))//Passing credentials
+				.scopeToProject( Identifier.byId("PROJECT ID"))//Project id
+				.authenticate();//verify the authentication
 	}
-
+	
 	public void initVM() {
-		// TODO
+		String script = Base64.getEncoder().encodeToString(("#!/bin/bash\n" + "sudo mkdir /home/ubuntu/temp").getBytes());//encoded with Base64. Creates a temporary directory
+		ServerCreate server = Builders.server()//creating a VM server
+				.name("Test")//VM or instance name
+				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
+				.image("f82012f7-5042-48aa-81c2-a59684840c23")// -image id
+				.keypairName("YOUR KEY PAIR NAME")//key pair name
+				.addSecurityGroup("ID OF YOUR SECURITY GROUP")	//Security group ID (allow SSH)
+				.userData(script)
+				.build();//build the VM with above configuration
+			
+		Server booting=os.compute().servers().boot(server);
+		ipAddress=booting.getAccessIPv4();
 	}
-
+	
 	public Socket connect() {
 		if(!running) return null;
 		try {
@@ -345,4 +372,5 @@ class WorkerNode {
 		}
 		return null;
 	}
+	
 }
