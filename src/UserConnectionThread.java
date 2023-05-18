@@ -14,6 +14,15 @@ public class UserConnectionThread extends Thread {
 		this.clientSocket = clientSocket;
 		this.clientNumber = clientNumber;
 	}
+	// reads multiple lines from server, exiting on an empty line
+	private static void menuPrint(BufferedReader input) throws IOException {
+		String line;
+		while ((line = input.readLine()) != null) { 
+			if(line.length() == 0) break;
+			// print the line
+			System.out.println("Server: " + line);
+		}
+	}
 	
 	public void run()  {
 		try {
@@ -21,11 +30,41 @@ public class UserConnectionThread extends Thread {
 			BufferedReader input = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 			DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
 			
-			String line = input.readLine();
-			System.out.println("pc responded with: " + line);
+			boolean p = false;
+			menuPrint(input);
+			output.writeBytes("2\n"); // password
+			System.out.println(input.readLine());
+			output.writeBytes("password\n");
+			p = input.read() != 0;
+			System.out.println(input.readLine());
+			menuPrint(input);
+			output.writeBytes("2\n");
+			p = input.read() != 0;
+			System.out.println(input.readLine());
+			menuPrint(input);
+			output.writeBytes("2\n");
+			p = input.read() != 0;
+			
+//			request type 1
+//			System.out.println(input.readLine());
+//			output.writeBytes("ITE00100550\n");
+//			System.out.println(input.readLine());
+//			output.writeBytes("1863\n");
+//			System.out.println(input.readLine());
+//			output.writeBytes("1\n");
+//			
+//			request type 2
+			System.out.println(input.readLine());
+			output.writeBytes("1863\n");
+			System.out.println(input.readLine());
+			output.writeBytes("1\n");
+			
+			System.out.println(input.readLine());
 			
 			input.close();
 			output.close();
+			clientSocket.close();
+
 		} catch(IOException e) {
 			e.printStackTrace();
 		}

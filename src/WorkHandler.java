@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -12,9 +13,11 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-/*** This thread will be in charge of handling all worker nodes and reading from the work queue ***/
 
+
+/*** This thread will be in charge of handling all worker nodes and reading from the work queue ***/
 class WorkHandler extends Thread {
+	private static final String REQUESTS_DIR = "requests";
 
 	Socket serverClient;
 	int clientNumber;
@@ -41,9 +44,21 @@ class WorkHandler extends Thread {
 
 	public void run() {
 		//puts the always on worker nodes into our array of 5
-		for(int i = 0; i < 3; i++) {
-			   workerArray[i] = new WorkerNode(8080+i); //different port for each worker
-			}
+		for(int i = 0; i < 3; i++) 
+		{
+		   workerArray[i] = new WorkerNode(8080+i); //different port for each worker
+		}
+		
+		// ensure that the output folder exists
+		File requestDir = new File(REQUESTS_DIR);
+		requestDir.mkdir();
+		
+		Map<String, String> pp = new HashMap<String, String>();
+		pp.put("requestType", "2");
+		pp.put("year", "1863");
+		pp.put("minMax", "1");
+//		pp.put("stationId", "ITE00100550");
+		createRequest(pp);
 
 		while(true)
 		{
@@ -162,6 +177,7 @@ class WorkHandler extends Thread {
 		
 		String option;
 		String id;
+		int steps = 1;
 		
 		switch(requestType)
 		{
@@ -170,6 +186,8 @@ class WorkHandler extends Thread {
 			id = params.get("stationId");
 
 			option = (params.get("minMax") == "0")? "TMIN" : "TMAX";
+			
+			System.out.println(params.get("year"));
 
 			// grab the dataset by station id
 			List<String> station = WeatherServer.dataByID.get(id);
@@ -178,9 +196,8 @@ class WorkHandler extends Thread {
 			for(String data : station)
 			{
 				String[] line = data.split(",");
-				
-				if(line[2] != option && line[1].substring(0, 4) != params.get("year")) continue;
-				
+
+				if(!line[2].equals(option) && !line[1].substring(0, 4).equals(params.get("year"))) continue;
 				// get parts of the line
 				String date = line[1];
 				String month = date.substring(4, 6);
@@ -203,11 +220,11 @@ class WorkHandler extends Thread {
 			option = (params.get("minMax") == "0")? "TMIN" : "TMAX";
 			
 			List<String> year = WeatherServer.dataByYear.get(params.get("year"));
-			
+
 			for(String data : year)
 			{
 				String[] line = data.split(",");
-				if(line[2] != option) continue;
+				if(line[2].equals(option)) continue;
 				
 				String stationId = line[0];
 				
@@ -226,7 +243,8 @@ class WorkHandler extends Thread {
 		case 3:
 			// TODO not done yet
 			id = params.get("stationId");
-			
+			steps = 2;
+			option = "TMAX";
 			int highLow = Integer.parseInt(params.get("minMax"));
 			
 			List<String> st = WeatherServer.dataByID.get(params.get(id));
@@ -235,7 +253,7 @@ class WorkHandler extends Thread {
 			{
 				String[] line = data.split(",");
 				
-				if(line[2] != "TMAX" && line[1].substring(0, 4) != params.get("year")) continue;
+				if(!line[2].equals(option) && !line[1].substring(0, 4).equals(params.get("year"))) continue;
 				
 				String date = line[1];
 				String month = line[1].substring(4, 6);
@@ -252,8 +270,10 @@ class WorkHandler extends Thread {
 			}
 			break;
 		}
-		Request r = new Request(requestId, 2, work.entrySet().size());
+		Request r = new Request(requestId, steps, work.entrySet().size());
 		requests.put(requestId, r);
+		
+		System.out.println(work.entrySet().size());
 
 		for (Map.Entry<String, List<Integer>> entry : work.entrySet())
 		{
@@ -261,9 +281,21 @@ class WorkHandler extends Thread {
 			String key = entry.getKey();
 			List<Integer> values = entry.getValue();
 
-			String filename = requestId + "_" + key;
-			// TODO write to file
-			// ...
+			String filename = String.format("%s/%d_%s.txt", REQUESTS_DIR, requestId, key);
+
+			// write to csv file using file writer
+			File output = new File(filename);
+			try {
+				FileWriter fileWriter = new FileWriter(output);
+				
+				String line = values.toString();
+				// need to exclude the square brackets from the list.toString()
+				fileWriter.write(line.substring(1, line.length() - 1));
+				
+				fileWriter.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
 			// create new work unit, pass in file name, then add to queue
 			WorkUnit w = new WorkUnit();

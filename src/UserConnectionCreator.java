@@ -8,10 +8,10 @@ public class UserConnectionCreator {
 	public static void main(String[] args) throws Exception {
 		try {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-			//int totalclients = 4;
-			System.out.println("Enter number of clients :");
+			int totalclients = 1;
+//			System.out.println("Enter number of clients :");
 			
-			int totalclients = Integer.parseInt(br.readLine());
+//			int totalclients = Integer.parseInt(br.readLine());
 			int clientnumber = 0;
 			
 			while(clientnumber < totalclients){

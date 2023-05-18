@@ -48,19 +48,12 @@ public class WeatherServer{
 			List<ClientConnectionThread> serverThreads = new ArrayList<>();
 			
 			// TODO add the dataset here
-			List<String> data = processData("");
+			List<String> data = processData("C:\\Users\\Jordan\\Downloads\\1863.csv");
 
 			dataByID = dataSplit(data, 0);
-//			dataByYear = dataSplit(data, 1); // fix this to just use a second dataset for diff year
+			dataByYear = new HashMap<String, List<String>>();
+			dataByYear.put("1863", data);
 
-//			List<String> Data = processData("C:\\Users\\adaml\\Downloads\\1863.csv");
-//			HashMap<String, List<String>> dataByID = dataIDSplit(Data);
-//			HashMap<String, List<String>> dataByYear = dataYearSplit(Data);
-			
-//			for (String i : dataByYear.keySet()) {  //debug function
-//				System.out.println("key: " + i + " value: " + dataByYear.get(i));
-//			}
-			
 			int counter = 0;
 			
 			System.out.println("Server started ...");
