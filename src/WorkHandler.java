@@ -365,17 +365,18 @@ class WorkUnit {
 class WorkerNode {
 	int port;
 	boolean running;
-	OSClientV3 os= null;
+	OSClientV3 os = null;
 	String ipAddress;
 	
 	WorkerNode(int p) {
 		port = p;
 		running = false;
-		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
-				.endpoint("https://keystone.rc.nectar.org.au:5000/v3")//Openstack endpoint
-				.credentials("XYZ@utas.edu.au", "YOUR PASSWORD",Identifier.byName("Default"))//Passing credentials
-				.scopeToProject( Identifier.byId("PROJECT ID"))//Project id
-				.authenticate();//verify the authentication
+		// commented out while testing
+//		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
+//				.endpoint("https://keystone.rc.nectar.org.au:5000/v3")//Openstack endpoint
+//				.credentials("XYZ@utas.edu.au", "YOUR PASSWORD",Identifier.byName("Default"))//Passing credentials
+//				.scopeToProject( Identifier.byId("PROJECT ID"))//Project id
+//				.authenticate();//verify the authentication
 	}
 	
 	public void initVM() {

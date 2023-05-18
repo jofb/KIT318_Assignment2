@@ -47,8 +47,9 @@ public class WeatherServer{
 			// list of client threads
 			List<ClientConnectionThread> serverThreads = new ArrayList<>();
 			
-			// TODO add the dataset here
-			List<String> data = processData("C:\\Users\\Jordan\\Downloads\\1863.csv");
+			// can use command line arg or set manually
+			List<String> data = processData(args[0]);
+			// List<String> data = processData("C:\\Users\\Jordan\\Downloads\\1863.csv");
 
 			dataByID = dataSplit(data, 0);
 			dataByYear = new HashMap<String, List<String>>();

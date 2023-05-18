@@ -5,10 +5,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelSftp;
@@ -19,6 +21,11 @@ import com.jcraft.jsch.SftpException;
 
 /* WorkNode will continually wait for connection, and then complete the given work when it receives one */
 public class WorkNode {
+	
+	private static final String WORK_DATA_PATH = "work_data.txt";
+	
+	public static volatile Object result = null;
+	private static volatile boolean working = false;
 
 	// reads multiple lines from server and returns as a List of strings
 	private static List<String> multiLineRead(BufferedReader input) throws IOException {
@@ -42,76 +49,68 @@ public class WorkNode {
 		BufferedReader input;
 		DataOutputStream output;
 		
-		downloadFile();
+		WorkNodeThread thread = new WorkNodeThread();
 		
-		// TODO this needs some sort of exit condition
-//		while(true)
-//		{
-//			// wait for connection from server
-//			weatherServer = worker.accept();
-//			
-//			// input and output streams
-//			input = new BufferedReader(new InputStreamReader(weatherServer.getInputStream()));
-//			output = new DataOutputStream(weatherServer.getOutputStream());
-//			
-//			// parse the request type
-//			// for now lets assume the first response is the request type
-//			int requestType = input.read();
-//			
-//			/************************** TODO DOWNLOADING FILE **********************************/
-//			/* all of the input here can be changed to reflect the address of the file to download + name */
-//			
-//			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-//			Scanner sc = new Scanner(new File(homeDir + "/transferred_data.txt"));  
-//			List<String> allData = new ArrayList<String>();  //list of all our data
-//			
-//			//should put all our data into a list. note that at this point i am assuming the data is in the format of (id,date,value type,temp)
-//			while (sc.hasNextLine()) {
-//			    String data = sc.nextLine();
-//			    allData.add(data);
-//			}
-//			
-//			// once we have our input, close the socket
-//			weatherServer.close();
-//			
-////			List<Integer> numbers = new ArrayList<Integer>();
-////			for(String s : numberStrings) {
-////				numbers.add(Integer.parseInt(s));
-////			}
-//
-//			int result = 0;
-//			// TODO should change this
-//			// 0 for avg, 1 for max, 2 for min
-//			switch(requestType)
-//			{
-//			case 0:
-////				int sum = 0;
-////				for(int n : numbers) {
-////					sum += n;
-////				}
-////				int avg = sum / numbers.size(); // TODO get this output out of the switch scope
-////				result = avg;
-//				break;
-//			case 1:
-//				break;
-//			case 2:
-//				break;
-//			}
-//			
-//			// the work is now complete, wait for a request from server again to respond with results
-//			weatherServer = worker.accept();
-//			
-//			output.writeBytes(Integer.toString(result) + "\n");
-//			
-//			//perhaps here, before we close the server again, check if we need to keep checking?
-//			weatherServer.close();
-//		}	
+		while(true)
+		{
+			// wait for connection from server
+			weatherServer = worker.accept();
+			
+			// input and output streams
+			input = new BufferedReader(new InputStreamReader(weatherServer.getInputStream()));
+			output = new DataOutputStream(weatherServer.getOutputStream());
+			
+			// the server has connected, what does it want?
+			int request = input.read();
+			
+			// it wants to see if we have some results, do we?
+			if(request == 1)
+			{
+				if(result != null)
+				{
+					// give the result back to the server
+				} else
+				{
+					// tell the server it got nothin
+				}
+			}
+			// it wants to pass in some work, whats it got?
+			else if (request == 2)
+			{
+				int requestType = input.read();
+				int requestId = Integer.parseInt(input.readLine());
+				String filename = input.readLine();
+
+				// TODO downloading should be moved into the thread
+				downloadFile(filename);
+				
+				// next, read from the downloaded file
+				String homeDir = System.getProperty("user.home"); 
+				Scanner sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
+				
+				List<String> lines = new ArrayList<String>();
+				
+				while(sc.hasNextLine())
+				{
+					// splitting by comma
+					String line = sc.nextLine();
+					lines.addAll(Arrays.asList(line.split(",")));
+				}
+				// map to list of integers
+				List<Integer> data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
+				
+				// tell the worknode thread to do some work (pass in the data, and then notify)
+				thread.setData(requestType, data);
+				data.notify();
+			}
+			weatherServer.close();
+		}
 	}
 	
-	public static void downloadFile() {
+	public static void downloadFile(String path) {
 
 		try {
-
+			// TODO work node needs to know the host IP, plus have a private key on them
 			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
 			String host = "203.101.225.57";  //ip of our weather server. CHANGE THIS?
 			String user = "ubuntu";
@@ -128,7 +127,7 @@ public class WorkNode {
 			Channel channel = session.openChannel("sftp");
 			channel.connect();
 			ChannelSftp sftpChannel = (ChannelSftp) channel;
-			sftpChannel.get("data.txt", homeDir + "/transferred_data.txt");
+			sftpChannel.get(path, homeDir + "/" + WORK_DATA_PATH);
 
 			sftpChannel.exit();
 			session.disconnect();
