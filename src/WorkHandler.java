@@ -101,13 +101,18 @@ class WorkHandler extends Thread {
 				//		remove all work units associated with request id from queue
 				Map<String, String> params = query.queryParams;
 				int id;
+				String response = "";
 				switch(query.queryType)
 				{
 				case CREATE:
 					createRequest(params);
+					//response to be output, which reminds the user of the request ID
+					response = "A new query has now been created, and is associated with request ID " + Integer.parseInt(params.get("requestId"));
 					break;
 				case VIEW:
 					id = Integer.parseInt(params.get("requestId"));
+					String currentStatus = requests.get(id).returnStatus();
+					response = "Your query has processed " + currentStatus + " items";
 					// find out status of the id
 					// (i.e compare the number of results to the total of expected results)
 					break;
@@ -122,18 +127,20 @@ class WorkHandler extends Thread {
 						}
 					}
 					// would also need to remove it from whatever results mapping we have
+					response = "The query associated with request ID " + Integer.parseInt(params.get("requestId")) + " has been deleted";
 //					results.remove(id);
 					break;
 				}
 				// once done, create a QueryResponse object and attach to the query\
+				query.response = new QueryResponse(response);
 
 				// for case 1, the response is the requestId associated with the created request
 				// for case 2, the response is the status of the request
 				// for case 3, the response is confirmation of the cancellation of request
-				String r = query.queryParams.toString();
-				QueryResponse response = new QueryResponse("Your query: " + r);
-				System.out.println("I'm handling this query: " + response.responseBody);
-				query.response = response;
+//				String r = query.queryParams.toString();
+//				QueryResponse response = new QueryResponse("Your query: " + r);
+//				System.out.println("I'm handling this query: " + response.responseBody);
+//				query.response = response;
 				// then notify the connection thread that this query has a response ready
 				synchronized(query)
 				{
@@ -151,6 +158,13 @@ class WorkHandler extends Thread {
 			 *   results.put(requestid, workResults)
 			 *
 			 */
+						
+			for (WorkerNode worker : workerArray) {
+				if (!worker.running) {
+					break;
+				}
+				
+			}
 
 			// add any results to some results queue, which can then be read when requesting to see results
 
@@ -348,6 +362,12 @@ class Request {
 		
 		// then compare expected results to size of results
 		double r = results.size() / expectedResults;
+	}
+		
+	//added a new function, in case you want to use the other one for different things
+	String returnStatus() {
+		String status = results.size() + "/" + expectedResults;
+		return status;
 	}
 }
 
