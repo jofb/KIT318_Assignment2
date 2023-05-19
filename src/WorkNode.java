@@ -85,6 +85,8 @@ public class WorkNode {
 				// TODO downloading should be moved into the thread
 				downloadFile(weatherServer.getInetAddress().toString(), filename);
 				
+				System.out.println(filename);
+				
 				// next, read from the downloaded file
 				String homeDir = System.getProperty("user.home"); 
 				Scanner sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
@@ -113,9 +115,9 @@ public class WorkNode {
 		try {
 			// TODO work node needs to know the host IP, plus have a private key on them
 			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-			String host = ip;  //ip of our weather server. CHANGE THIS?
+			String host = "203.101.228.83";  //ip of our weather server. CHANGE THIS?
 			String user = "ubuntu";
-			String privateKey = homeDir + "/kit318-assignment2-ssh.pem"; //this is the bugged line. Probably a .pem
+			String privateKey = homeDir + "/shrektest.pem"; //this is the bugged line. Probably a .pem
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(user, host, 22);
 			Properties config = new Properties();
