@@ -6,6 +6,8 @@ public class WorkNodeThread extends Thread {
 	private volatile List<Integer> data;
 	private volatile int requestType;
 	
+	private volatile int result;
+	
 	public WorkNodeThread()
 	{
 		
@@ -23,6 +25,10 @@ public class WorkNodeThread extends Thread {
 			}
 			
 			// do the work based on data and request type
+			
+			// 
+			
+			// result = ...
 		}
 	}
 	
@@ -30,5 +36,10 @@ public class WorkNodeThread extends Thread {
 	{
 		data = _data;
 		requestType = _requestType;
+	}
+	
+	public int getResult()
+	{
+		return result;
 	}
 }

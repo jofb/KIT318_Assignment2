@@ -43,7 +43,7 @@ public class WorkNode {
 	public static void main(String[] args) throws Exception
 	{
 		// the worker node is a server in of itself, it waits for connections from the weather server
-		ServerSocket worker = new ServerSocket(8888);
+		ServerSocket worker = new ServerSocket(9000);
 		
 		Socket weatherServer;
 		BufferedReader input;
@@ -63,16 +63,17 @@ public class WorkNode {
 			// the server has connected, what does it want?
 			int request = input.read();
 			
+			// 1 = checking results, and if theyre done, get the results
+			// 2 = create a job
+						
 			// it wants to see if we have some results, do we?
 			if(request == 1)
 			{
-				if(result != null)
-				{
-					// give the result back to the server
-				} else
-				{
-					// tell the server it got nothin
-				}
+				// check if the thread is done with its work
+				
+				// send back boolean indiciating whether its done with work
+				
+				// if true, then send back reults
 			}
 			// it wants to pass in some work, whats it got?
 			else if (request == 2)
@@ -82,7 +83,7 @@ public class WorkNode {
 				String filename = input.readLine();
 
 				// TODO downloading should be moved into the thread
-				downloadFile(filename);
+				downloadFile(weatherServer.getInetAddress().toString(), filename);
 				
 				// next, read from the downloaded file
 				String homeDir = System.getProperty("user.home"); 
@@ -107,14 +108,14 @@ public class WorkNode {
 		}
 	}
 	
-	public static void downloadFile(String path) {
+	public static void downloadFile(String ip, String path) {
 
 		try {
 			// TODO work node needs to know the host IP, plus have a private key on them
 			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-			String host = "203.101.225.57";  //ip of our weather server. CHANGE THIS?
+			String host = ip;  //ip of our weather server. CHANGE THIS?
 			String user = "ubuntu";
-			String privateKey = homeDir + "/Downloads/kit318-assignment-ssh.pem"; //this is the bugged line. Probably a .pem
+			String privateKey = homeDir + "/kit318-assignment2-ssh.pem"; //this is the bugged line. Probably a .pem
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(user, host, 22);
 			Properties config = new Properties();

@@ -33,7 +33,7 @@ class WorkHandler extends Thread {
 	
 	int requestCounter = 0;
 	
-	WorkerNode[] workerArray = new WorkerNode[5];  //array of our workers, up to our max of 5
+	List<WorkerNode> workers = new ArrayList<WorkerNode>();
 
 	// queue of queries
 	Queue<Query> queryQueue;
@@ -53,21 +53,24 @@ class WorkHandler extends Thread {
 
 	public void run() {
 		//puts the always on worker nodes into our array of 5
-		for(int i = 0; i < 3; i++) 
-		{
-		   workerArray[i] = new WorkerNode(8080+i); //different port for each worker
-		}
+//		for(int i = 0; i < 3; i++) 
+//		{
+//		   workerArray[i] = new WorkerNode(8080+i); //different port for each worker
+//		}
 		
+//		workers.add(new WorkerNode("email", "pass", "projectid"));
+//		workers.get(0).initVM("imageid", "keypair", "security");
+//		
 		// ensure that the output folder exists
 		File requestDir = new File(REQUESTS_DIR);
 		requestDir.mkdir();
 		
-		Map<String, String> pp = new HashMap<String, String>();
-		pp.put("requestType", "2");
-		pp.put("year", "1863");
-		pp.put("minMax", "1");
-//		pp.put("stationId", "ITE00100550");
-		createRequest(pp);
+//		Map<String, String> pp = new HashMap<String, String>();
+//		pp.put("requestType", "2");
+//		pp.put("year", "1863");
+//		pp.put("minMax", "1");
+////		pp.put("stationId", "ITE00100550");
+//		createRequest(pp);
 
 		while(true)
 		{
@@ -107,7 +110,8 @@ class WorkHandler extends Thread {
 				case CREATE:
 					createRequest(params);
 					//response to be output, which reminds the user of the request ID
-					response = "A new query has now been created, and is associated with request ID " + Integer.parseInt(params.get("requestId"));
+					response = "your request is being handled i swear!";
+//					response = "A new query has now been created, and is associated with request ID " + Integer.parseInt(params.get("requestId"));
 					break;
 				case VIEW:
 					id = Integer.parseInt(params.get("requestId"));
@@ -128,7 +132,7 @@ class WorkHandler extends Thread {
 					}
 					// would also need to remove it from whatever results mapping we have
 					response = "The query associated with request ID " + Integer.parseInt(params.get("requestId")) + " has been deleted";
-//					results.remove(id);
+					requestQueue.remove(id);
 					break;
 				}
 				// once done, create a QueryResponse object and attach to the query\
@@ -149,6 +153,16 @@ class WorkHandler extends Thread {
 			}
 
 			// poll workers and check if there are any results
+			
+			// iterate over workers and connect to them using connect
+			
+			// step 1. send 1 using 
+			
+			// receieve a boolean
+			
+			// if the booleans true, weve got results
+			
+			// receieve results
 
 			/* for worker in workers
 			 *   if !worker.running
@@ -156,10 +170,36 @@ class WorkHandler extends Thread {
 			 *
 			 *   (black box) check if worker is done, get back some workResults + request id
 			 *   results.put(requestid, workResults)
+			 *   
+			 *   if its a 1, then read in the results the worknodes about to send
 			 *
 			 */
+			
+			// try to connect to worker node
+			try {
+				Socket s = new Socket("131.217.174.74", 9000);
+				// give some work to it
+				// input and output streams
+				BufferedReader input = new BufferedReader(new InputStreamReader(s.getInputStream()));
+				DataOutputStream output = new DataOutputStream(s.getOutputStream());
+				
+				// to download a file
+				output.write(2);
+				output.write(1);
+				WorkUnit w = workQueue.poll();
+				output.writeBytes(w.requestId + "\n");
+				
+				output.writeBytes(w.data + "\n");
+				
+				s.close();
+				
+				
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 						
-			for (WorkerNode worker : workerArray) {
+			for (WorkerNode worker : workers) {
 				if (!worker.running) {
 					break;
 				}
@@ -170,21 +210,11 @@ class WorkHandler extends Thread {
 
 			for(WorkUnit work : workQueue)
 			{
-				//i feel like we might run into the the problem of the data.txt file being written over as the
-				//work node doesn't get to it in time. But, i could be wrong
-//				try {
-//					String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-//				    String filePath = homeDir + "/data.txt"; // sets the file path for the doc
-//				    FileWriter writer = new FileWriter(filePath);
-//
-//				    //writes the data to the file. Should be noted that each line of the data needs to be
-//				    //separated by something, and that can't be commas as we're already using that to separate
-//				    //elements in the line itself. Use \n, imo
-//					writer.write(work.data);
-//		            writer.flush();
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
+				// iterate over work and allocate to workers
+				
+				// send 2 : create job
+				
+				// send over whatever data u want for the work
 			}
 		}
 	}
@@ -195,6 +225,8 @@ class WorkHandler extends Thread {
 		
 		int requestId = requestCounter;
 		requestCounter++;
+		
+		params.put("requestId", Integer.toString(requestId));
 
 		Map<String, List<Integer>> work = new HashMap<String, List<Integer>>();
 		
@@ -214,6 +246,8 @@ class WorkHandler extends Thread {
 
 			// grab the dataset by station id
 			List<String> station = WeatherServer.dataByID.get(id);
+			
+			System.out.println(station.size());
 			
 			// iterate over station
 			for(String data : station)
@@ -325,6 +359,7 @@ class WorkHandler extends Thread {
 			w.requestId = requestId;
 			w.requestType = requestType;
 			w.data = filename;
+			System.out.println(w.requestId);
 			workQueue.add(w);
 		}
 	}
@@ -345,11 +380,14 @@ class Request {
 	int expectedResults;
 	List<Integer> results;
 	
+	long time;
+	
 	Request(int id, int steps, int expectedResults) 
 	{
 		this.id = id;
 		this.totalSteps = steps;
 		this.expectedResults = expectedResults;
+		time = System.currentTimeMillis();
 		
 		this.step = 1;
 	}
@@ -367,6 +405,14 @@ class Request {
 	//added a new function, in case you want to use the other one for different things
 	String returnStatus() {
 		String status = results.size() + "/" + expectedResults;
+		
+		// if status is compelte
+		
+		// when its complete
+		time = System.currentTimeMillis() - time;
+		
+		// then also return bill (results + price + time)
+		
 		return status;
 	}
 }
@@ -388,25 +434,28 @@ class WorkerNode {
 	OSClientV3 os = null;
 	String ipAddress;
 	
-	WorkerNode(int p) {
-		port = p;
+	// TODO pass in the auth information
+	WorkerNode(String email, String password, String projectID) {
 		running = false;
 		// commented out while testing
-//		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
-//				.endpoint("https://keystone.rc.nectar.org.au:5000/v3")//Openstack endpoint
-//				.credentials("XYZ@utas.edu.au", "YOUR PASSWORD",Identifier.byName("Default"))//Passing credentials
-//				.scopeToProject( Identifier.byId("PROJECT ID"))//Project id
-//				.authenticate();//verify the authentication
+		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
+				.endpoint("https://keystone.rc.nectar.org.au:5000/v3")//Openstack endpoint
+				.credentials(email, password,Identifier.byName("Default"))//Passing credentials
+				.scopeToProject( Identifier.byId(projectID))//Project id
+				.authenticate();//verify the authentication
 	}
 	
-	public void initVM() {
+	// image id
+	// key pair name
+	// security group id
+	public void initVM(String imageID, String keyPairName, String securityID) {
 		String script = Base64.getEncoder().encodeToString(("#!/bin/bash\n" + "sudo mkdir /home/ubuntu/temp").getBytes());//encoded with Base64. Creates a temporary directory
 		ServerCreate server = Builders.server()//creating a VM server
 				.name("Test")//VM or instance name
 				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
-				.image("f82012f7-5042-48aa-81c2-a59684840c23")// -image id
-				.keypairName("YOUR KEY PAIR NAME")//key pair name
-				.addSecurityGroup("ID OF YOUR SECURITY GROUP")	//Security group ID (allow SSH)
+				.image(imageID)// -image id
+				.keypairName(keyPairName)//key pair name
+				.addSecurityGroup(securityID)	//Security group ID (allow SSH)
 				.userData(script)
 				.build();//build the VM with above configuration
 			

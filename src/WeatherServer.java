@@ -40,7 +40,7 @@ public class WeatherServer{
 		passwordList.add("password");
 		
 		// open up server on port
-		ServerSocket server = new ServerSocket(8888);
+		ServerSocket server = new ServerSocket(9000);
 
 		// user connection
 		try {
