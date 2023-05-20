@@ -1,4 +1,5 @@
 import java.util.List;
+import java.util.concurrent.locks.Lock;
 
 public class WorkNodeThread extends Thread {
 	
@@ -7,11 +8,13 @@ public class WorkNodeThread extends Thread {
 	private volatile int requestType;
 	private volatile int requestId;
 	
-	private volatile int result;
+	private Lock lock;
 	
-	public WorkNodeThread()
+	private volatile Integer result;
+	
+	public WorkNodeThread(Lock _lock)
 	{
-		
+		lock = _lock;
 	}
 
 	public void run()
@@ -19,17 +22,25 @@ public class WorkNodeThread extends Thread {
 		// this will wait for work
 		while(true)
 		{
-			try {
-				data.wait();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			synchronized(lock)
+			{
+				try {
+					lock.wait();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
+
+			result = null;
+			System.out.println("im doing this work!" + data.toString());
 			
 			// do the work based on data and request type
 			
 			// 
 			
 			// result = ...
+			
+			result = 5;
 		}
 	}
 	
@@ -50,12 +61,7 @@ public class WorkNodeThread extends Thread {
 		return result;
 	}
 	
-	public int isFinished() {
-		//TODO write the code to actually check this
-		int finished = 0;  //0 not finished, 1 finished
-		
-		//if statement here
-		
-		return  finished;
+	public boolean isFinished() {
+		return result != null;
 	}
 }

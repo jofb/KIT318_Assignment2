@@ -42,7 +42,7 @@ public class UserConnection {
 	public static void main(String[] args) throws Exception {
 		try {
 			// change to match destination address
-			Socket socket = new Socket("203.101.228.83", 9000);
+			Socket socket = new Socket("203.101.231.239", 9000);
 			
 			// TODO this should be a loop similar to on server side, only breaking when user exits
 			

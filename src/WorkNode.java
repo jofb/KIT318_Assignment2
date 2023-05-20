@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Scanner;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import com.jcraft.jsch.Channel;
@@ -49,7 +51,10 @@ public class WorkNode {
 		BufferedReader input;
 		DataOutputStream output;
 		
-		WorkNodeThread thread = new WorkNodeThread();
+		Lock lock = new ReentrantLock();
+		
+		WorkNodeThread thread = new WorkNodeThread(lock);
+		thread.start();
 		
 		while(true)
 		{
@@ -69,42 +74,50 @@ public class WorkNode {
 			// it wants to see if we have some results, do we?
 			if(request == 1)
 			{
-				output.writeInt(thread.isFinished());
-				if (thread.isFinished() == 1) {  //checks if it's finished (code in WorkNodeThread needs to be completed)
+				boolean finished = thread.isFinished();
+				output.writeBoolean(finished);
+				if (finished) {  //checks if it's finished (code in WorkNodeThread needs to be completed)
 					output.write(thread.getRequestId());
 					output.write(thread.getResult());
+					
+					System.out.println("Returning results: " + thread.getResult());
 				}
 			}
 			// it wants to pass in some work, whats it got?
 			else if (request == 2)
 			{
 				int requestType = input.read();
-				int requestId = Integer.parseInt(input.readLine());
+				int requestId = input.read();
 				String filename = input.readLine();
 
+				// SSH broken, dummy data below:
 				// TODO downloading should be moved into the thread
-				downloadFile(weatherServer.getInetAddress().toString(), filename);
-				
-				System.out.println(filename);
-				
-				// next, read from the downloaded file
-				String homeDir = System.getProperty("user.home"); 
-				Scanner sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
-				
-				List<String> lines = new ArrayList<String>();
-				
-				while(sc.hasNextLine())
-				{
-					// splitting by comma
-					String line = sc.nextLine();
-					lines.addAll(Arrays.asList(line.split(",")));
-				}
-				// map to list of integers
-				List<Integer> data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
-				
+//				downloadFile(weatherServer.getInetAddress().toString(), filename);
+//				
+				System.out.println("Filename: " + filename);
+//				
+//				// next, read from the downloaded file
+//				String homeDir = System.getProperty("user.home"); 
+//				Scanner sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
+//				
+//				List<String> lines = new ArrayList<String>();
+//				
+//				while(sc.hasNextLine())
+//				{
+//					// splitting by comma
+//					String line = sc.nextLine();
+//					lines.addAll(Arrays.asList(line.split(",")));
+//				}
+//				// map to list of integers
+//				List<Integer> data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
+				List<Integer> data = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
 				// tell the worknode thread to do some work (pass in the data, and then notify)
 				thread.setData(requestType, requestId, data);
-				data.notify();
+				synchronized(lock)
+				{
+					lock.notify();
+				}
+
 			}
 			weatherServer.close();
 		}
@@ -115,13 +128,14 @@ public class WorkNode {
 		try {
 			// TODO work node needs to know the host IP, plus have a private key on them
 			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-			String host = "203.101.228.83";  //ip of our weather server. CHANGE THIS?
+			String host = "203.101.231.239";  //ip of our weather server. CHANGE THIS?
 			String user = "ubuntu";
-			String privateKey = homeDir + "/shrektest.pem"; //this is the bugged line. Probably a .pem
+			String privateKey = homeDir + "/it318-assignment2-ssh.pem"; //this is the bugged line. Probably a .pem
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(user, host, 22);
 			Properties config = new Properties();
 			jsch.addIdentity(privateKey);
+			jsch.setKnownHosts(".ssh/known_hosts");
 			System.out.println("identity added ");
 			config.put("StrictHostKeyChecking", "no");
 			session.setConfig(config);

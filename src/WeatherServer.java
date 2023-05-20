@@ -27,6 +27,7 @@ public class WeatherServer{
     
     public static Map<String, List<String>> dataByID;
     public static Map<String, List<String>> dataByYear;
+    public static Map<String, Map<String, List<String>>> dataByYearID;
 
 	public static void main(String[] args) throws Exception {
 		
@@ -48,6 +49,16 @@ public class WeatherServer{
 			List<ClientConnectionThread> serverThreads = new ArrayList<>();
 			
 			// can use command line arg or set manually
+			dataByYear = new HashMap<String, List<String>>();
+			for(String arg : args)
+			{
+				List<String> data = processData(arg);
+				dataByID = dataSplit(data, 0);
+				String year = data.get(0).split(",")[1].substring(0, 4); // disgusting but works
+				dataByYearID.put(year, dataByID);
+			}
+			
+			// dataByYearID > year > ids in each year
 			List<String> data = processData(args[0]);
 			// List<String> data = processData("C:\\Users\\Jordan\\Downloads\\1863.csv");
 

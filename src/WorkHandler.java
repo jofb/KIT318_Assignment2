@@ -9,9 +9,11 @@ import java.net.UnknownHostException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Base64;
@@ -35,14 +37,11 @@ class WorkHandler extends Thread {
 	
 	int requestCounter = 0;
 	
-	List<WorkerNode> workers = new ArrayList<WorkerNode>();
+	List<WorkerNode> workers;
 
 	// queue of queries
 	Queue<Query> queryQueue;
 	
-	// queue of requests
-	Queue<Request> requestQueue;
-
 	// map from requestid to request object
 	Map<Integer, Request> requests = new HashMap<Integer, Request>();
 
@@ -54,29 +53,29 @@ class WorkHandler extends Thread {
 	}
 
 	public void run() {
-		//puts the always on worker nodes into our array of 5
-//		for(int i = 0; i < 3; i++) 
-//		{
-//		   workerArray[i] = new WorkerNode(8080+i); //different port for each worker
-//		}
-		
-//		workers.add(new WorkerNode("email", "pass", "projectid"));
-//		workers.get(0).initVM("imageid", "keypair", "security");
-//		
 		// ensure that the output folder exists
 		File requestDir = new File(REQUESTS_DIR);
 		requestDir.mkdir();
 		
-//		Map<String, String> pp = new HashMap<String, String>();
-//		pp.put("requestType", "2");
-//		pp.put("year", "1863");
-//		pp.put("minMax", "1");
-////		pp.put("stationId", "ITE00100550");
-//		createRequest(pp);
+		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
+		WorkerNode w1 = new WorkerNode(true, "email", "password","projectID","imageID","keypair","securitygroup");
+		WorkerNode w2 = new WorkerNode(true, "email", "password","projectID","imageID","keypair","securitygroup");
+		WorkerNode w3 = new WorkerNode(true, "email", "password","projectID","imageID","keypair","securitygroup");
+		WorkerNode w4 = new WorkerNode(false, "email", "password","projectID","imageID","keypair","securitygroup");
+		WorkerNode w5 = new WorkerNode(false, "email", "password","projectID","imageID","keypair","securitygroup");
 
+		workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
+		
+		/* we also want to initialize the first three virtual machines */
+		/* ideally this should pause the main thread while they're starting */
+//		w1.initVM();
+//		w2.initVM();
+//		w3.initVM();
+//		
+		// and ideally we have some way of telling when they're done (can't remember if there's a way)
+		
 		while(true)
 		{
-			// feel free to get rid of this
 			System.out.println("Waiting for Requests...");
 			// wait for updates to request queue
 			synchronized(queryQueue)
@@ -94,33 +93,22 @@ class WorkHandler extends Thread {
 			{
 				// parse each query and handle
 
-				// cases:
-				// 1. create a request
-				//		based on request type, split up data into work units
-				//		then put work units into work queue
-
-				// 2. view request
-				//		check status of request somehow (perhaps checking work queue)
-
-				// 3. cancel request
-				//		remove all work units associated with request id from queue
 				Map<String, String> params = query.queryParams;
 				int id;
 				String response = "";
+				
 				switch(query.queryType)
 				{
 				case CREATE:
-					createRequest(params);
+					id = createRequest(params);
 					//response to be output, which reminds the user of the request ID
-					response = "your request is being handled i swear!";
-//					response = "A new query has now been created, and is associated with request ID " + Integer.parseInt(params.get("requestId"));
+					response = "A new query has now been created, and is associated with request ID " + id;
 					break;
 				case VIEW:
 					id = Integer.parseInt(params.get("requestId"));
-					String currentStatus = requests.get(id).returnStatus();
+					
+					String currentStatus = requests.get(id).checkStatus();
 					response = currentStatus;
-					// find out status of the id
-					// (i.e compare the number of results to the total of expected results)
 					break;
 				case STOP:
 					id = Integer.parseInt(params.get("requestId"));
@@ -132,63 +120,52 @@ class WorkHandler extends Thread {
 							workQueue.remove(work);
 						}
 					}
-					// would also need to remove it from whatever results mapping we have
-					response = "The query associated with request ID " + Integer.parseInt(params.get("requestId")) + " has been deleted";
-					requestQueue.remove(id);
+					response = String.format("Request [%d] has been deleted", id);
+					requests.remove(id);
 					break;
 				}
-				// once done, create a QueryResponse object and attach to the query\
+				// once done, create a QueryResponse object and attach to the query
 				query.response = new QueryResponse(response);
 
-				// for case 1, the response is the requestId associated with the created request
-				// for case 2, the response is the status of the request
-				// for case 3, the response is confirmation of the cancellation of request
-//				String r = query.queryParams.toString();
-//				QueryResponse response = new QueryResponse("Your query: " + r);
-//				System.out.println("I'm handling this query: " + response.responseBody);
-//				query.response = response;
-				// then notify the connection thread that this query has a response ready
+				// notify the connection thread that this query has a response ready
 				synchronized(query)
 				{
 					query.notify();
 				}
 			}
 
-			// poll workers and check if there are any results
-			
-			// iterate over workers and connect to them using connect
-			
-			// step 1. send 1 using 
-			
-			// receieve a boolean
-			
-			// if the booleans true, weve got results
-			
-			// receieve results
-			
 			//TODO fix this start that I've made
 			for (WorkerNode worker : workers) {
-				if (!worker.running) {
-					break;
+				if (!worker.active) {
+					continue;
 				}
 				
 				// try to connect to worker node
 				try {
-					Socket s = new Socket(worker.ipAddress, worker.port);
+					Socket s = worker.connect();
 					// input and output streams
 					BufferedReader input = new BufferedReader(new InputStreamReader(s.getInputStream()));
 					DataOutputStream output = new DataOutputStream(s.getOutputStream());
-					int finished = 0;  //0 not finished, 1 finished
-					Request currentRequest;
-					
 					// to check status
 					output.write(1);
-					finished = input.read();
+					boolean finished = input.read() != 0;
 					
-					if (finished == 1) {						
+					if (finished) {						
 						int requestid = input.read();
-						currentRequest = requests.get(Integer.valueOf(requestid));  //finds current request in map						
-						currentRequest.results.add(input.read());  //adds the int to the results (add for each loop if more than 1 result?)
+						// finds current request in map	
+						Request currentRequest = requests.get(Integer.valueOf(requestid));
+						
+						int result = input.read();
+						
+						// if its null, the request has been deleted, discard the results
+						if(currentRequest != null)
+						{
+							// i think instead of just storing numbners, could also associate the particular workunit with each result, not sure
+							currentRequest.results.add(input.read());  //adds the int to the results (add for each loop if more than 1 result?)
+						}
+						
+						// set worker to not working
+						worker.available = true;
 					}
 					
 					s.close();					
@@ -197,55 +174,48 @@ class WorkHandler extends Thread {
 					e.printStackTrace();
 				}
 			}
-
-			/* for worker in workers
-			 *   if !worker.running
-			 *      break
-			 *
-			 *   (black box) check if worker is done, get back some workResults + request id
-			 *   results.put(requestid, workResults)
-			 *   
-			 *   if its a 1, then read in the results the worknodes about to send
-			 *
-			 */
 			
-			// try to connect to worker node
-			try {
-				Socket s = new Socket("131.217.174.74", 9000);
-				// give some work to it
-				// input and output streams
-				BufferedReader input = new BufferedReader(new InputStreamReader(s.getInputStream()));
-				DataOutputStream output = new DataOutputStream(s.getOutputStream());
-				
-				// to download a file
-				output.write(2);
-				output.write(1);
-				WorkUnit w = workQueue.poll();
-				output.writeBytes(w.requestId + "\n");
-				
-				output.writeBytes(w.data + "\n");
-				
-				s.close();
-				
-				
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
-			// add any results to some results queue, which can then be read when requesting to see results
-
-			for(WorkUnit work : workQueue)
+			if(workQueue.isEmpty()) continue;
+			
+			for(WorkerNode worker : workers)
 			{
-				// iterate over work and allocate to workers
+				if(!worker.active && !worker.available)
+				{
+					continue;
+				}
+				// first check if we're meant to be using priority (some bool on weather server likely)
+				// if yes then can reduce based on highest priority
+				// and set that to work
+				// WorkUnit = work = workQueue.stream().reduce((w1, w2) -> w1.priority >= w2.priority ? w1 : w2);
 				
-				// send 2 : create job
+				// this is either first come first serve, or priority
+				WorkUnit work = workQueue.poll();
 				
-				// send over whatever data u want for the work
+				// if there's nothing left in the queue, just leave
+				if(work == null) break;
+				
+				// connect to worker
+				try {
+					Socket s = worker.connect();
+					DataOutputStream output = new DataOutputStream(s.getOutputStream());
+					
+					output.write(2);
+					
+					output.write(work.requestType);
+					output.write(work.requestId);
+					output.writeBytes(work.data + "\n");
+					
+					s.close();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				worker.available = false;
+				worker.workingOn = work;
 			}
 		}
 	}
-	private void createRequest(Map<String, String> params)
+	private int createRequest(Map<String, String> params)
 	{
 		// get the request type (to be used in a switch statement)
 		int requestType = Integer.parseInt(params.get("requestType"));
@@ -259,6 +229,7 @@ class WorkHandler extends Thread {
 		
 		String option;
 		String id;
+		List<String> station;
 		int steps = 1;
 		
 		switch(requestType)
@@ -268,24 +239,19 @@ class WorkHandler extends Thread {
 			id = params.get("stationId");
 
 			option = (params.get("minMax") == "0")? "TMIN" : "TMAX";
-			
-			System.out.println(params.get("year"));
 
 			// grab the dataset by station id
-			List<String> station = WeatherServer.dataByID.get(id);
-			
-			System.out.println(station.size());
-			
+			// List<String> station = WeatherServer.dataByID.get(id);
+			station = WeatherServer.dataByYearID.get(params.get("year")).get(id);
+
 			// iterate over station
 			for(String data : station)
 			{
 				String[] line = data.split(",");
 
-				if(!line[2].equals(option) && !line[1].substring(0, 4).equals(params.get("year"))) continue;
+				if(!line[2].equals(option)) continue;
 				// get parts of the line
-				String date = line[1];
-				String month = date.substring(4, 6);
-
+				String month = line[1].substring(4, 6);
 				int temp = Integer.parseInt(line[3]);
 				
 				// form the key from the month and id
@@ -302,26 +268,32 @@ class WorkHandler extends Thread {
 			// yearly average by year
 		case 2:
 			option = (params.get("minMax") == "0")? "TMIN" : "TMAX";
-			
-			List<String> year = WeatherServer.dataByYear.get(params.get("year"));
 
-			for(String data : year)
+			Map<String, List<String>> year = WeatherServer.dataByYearID.get(params.get("year"));
+			
+			for(Entry<String, List<String>> entry : year.entrySet())
 			{
-				String[] line = data.split(",");
-				if(line[2].equals(option)) continue;
+				String stationId = entry.getKey();
 				
-				String stationId = line[0];
+				station = entry.getValue();
 				
-				int temp = Integer.parseInt(line[3]);
-				
-				String key = stationId;
-				
-				if(!work.containsKey(key))
+				for(String data : station)
 				{
-					work.put(key, new ArrayList<Integer>());
+					String[] line = data.split(",");
+					if(line[2].equals(option)) continue;
+
+					int temp = Integer.parseInt(line[3]);
+					
+					String key = stationId;
+					
+					if(!work.containsKey(key))
+					{
+						work.put(key, new ArrayList<Integer>());
+					}
+					work.get(key).add(temp);
 				}
-				work.get(key).add(temp);
 			}
+
 			break;
 			// month which has highest/lowest max temperature in given year and station
 		case 3:
@@ -329,17 +301,16 @@ class WorkHandler extends Thread {
 			id = params.get("stationId");
 			steps = 2;
 			option = "TMAX";
-			int highLow = Integer.parseInt(params.get("minMax"));
+			int highLow = Integer.parseInt(params.get("minMax")); // this needs to be put on the request object
+
+			station = WeatherServer.dataByYearID.get(params.get("year")).get(id);
 			
-			List<String> st = WeatherServer.dataByID.get(params.get(id));
-			
-			for(String data : st)
+			for(String data : station)
 			{
 				String[] line = data.split(",");
 				
-				if(!line[2].equals(option) && !line[1].substring(0, 4).equals(params.get("year"))) continue;
-				
-				String date = line[1];
+				if(!line[2].equals(option)) continue;
+
 				String month = line[1].substring(4, 6);
 				
 				int temp = Integer.parseInt(line[3]);
@@ -354,7 +325,9 @@ class WorkHandler extends Thread {
 			}
 			break;
 		}
+		
 		Request r = new Request(requestId, steps, work.entrySet().size());
+		r.results = new ArrayList<Integer>();
 		requests.put(requestId, r);
 		
 		System.out.println(work.entrySet().size());
@@ -386,19 +359,23 @@ class WorkHandler extends Thread {
 			w.requestId = requestId;
 			w.requestType = requestType;
 			w.data = filename;
-			System.out.println(w.requestId);
+			
+			switch(requestType)
+			{
+			case 1:
+			case 2:
+				w.priority = 1;
+				break;
+			case 3:
+				w.priority = 5;
+				break;
+			}
 			workQueue.add(w);
 		}
+		
+		return requestId;
 	}
 }
-
-// go ahead with creating a request object
-
-// have a steps variable
-// set the bad cases one to TWO steps
-// and then when the list of results is filled up
-// create a NEW work unit from the results
-// pass into queue with the request id
 
 class Request {
 	int id;
@@ -424,40 +401,28 @@ class Request {
 		
 		this.step = 1;
 	}
-	
-	// not implemented
-	void checkStatus()
-	{
-		// compare step to total steps
-		double mod = step / totalSteps;
-		
-		// then compare expected results to size of results
-		double r = results.size() / expectedResults;
-	}
-		
+
 	//added a new function, in case you want to use the other one for different things
-	String returnStatus() {
-		//String status = results.size() + "/" + expectedResults;
+	String checkStatus() {
+		int status = (results.size() * 100) / expectedResults;
 		
 		// if status is complete
-		if (results.size()/expectedResults == 1) {
+		if (status == 100) {
 			time = System.currentTimeMillis() - time;
-			time = time/1000;  //to seconds
-			time = time/60;  //to minutes (not going to bother with hours)
+			time = time / 1000;  //to seconds
+			time = time / 60;  //to minutes (not going to bother with hours)
 			end_date = dtf.format(LocalDateTime.now());
-			String resultsString = "";
-			
-			for (int item : results) {
-				resultsString += Integer.toString(item) + ", ";
-			}
-			
-			//would be cool if we could give info about their query here but don't think it's possible?
-			String statement = "The result for your query is: " + resultsString + "\n";
-			statement += "Start Date: " + start_date + ", End Date: " + end_date + ", Time Taken (minutes): " + time + "\n";
-			statement += "Total Cost ($3/minute): $" + 3*time;			
+			String resultsString = results.toString();
+
+			// would be cool if we could give info about their query here but don't think it's possible?
+			String statement = String.format("""
+					The result for your query is: %s\n
+					Start Date: %s, End Date: %s, Time taken (minutes): %d\n
+					Total Cost ($3/minute): $%d
+					""", resultsString, start_date, end_date, time, 3 * time);			
 			return statement;
 		} else {
-			String statement = "Your query is still being processed. It is currently " + results.size()/expectedResults +
+			String statement = "Your query is still being processed. It is currently " + status +
 					"% complete";
 			return statement;
 		}
@@ -469,6 +434,7 @@ class WorkUnit {
 	Integer requestId;
 	Integer requestType;
 	String data;
+	int priority = 1;
 }
 
 
@@ -476,44 +442,62 @@ class WorkUnit {
 // TODO rather than port it should be storing an ip address since we will be working with VMs
 // using ports for now on local machines since all on same machine
 class WorkerNode {
-	int port;
-	boolean running;
+
+	boolean active;
+	boolean available;
+	WorkUnit workingOn;
+	
+	Map<String, String> auth;
+	
 	OSClientV3 os = null;
+	
 	String ipAddress;
+	int port = 9000;
 	
 	// TODO pass in the auth information
-	WorkerNode(String email, String password, String projectID) {
-		running = false;
-		// commented out while testing
-		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
-				.endpoint("https://keystone.rc.nectar.org.au:5000/v3")//Openstack endpoint
-				.credentials(email, password,Identifier.byName("Default"))//Passing credentials
-				.scopeToProject( Identifier.byId(projectID))//Project id
-				.authenticate();//verify the authentication
+	WorkerNode(boolean start, String email, String password, String projectID, String imageID, String keyPairName, String securityID) {
+		auth = new HashMap<String, String>();
+		auth.put("email", email);
+		auth.put("password", password);
+		auth.put("projectID", projectID);
+		auth.put("imageID", imageID);
+		auth.put("keypairName", keyPairName);
+		auth.put("securityID", securityID);
+		
+		active = start;
+		available = start;
 	}
 	
 	// image id
 	// key pair name
 	// security group id
-	public void initVM(String imageID, String keyPairName, String securityID) {
+	public void initVM() {
+		// authenticate openstack builder
+		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
+				.endpoint("https://keystone.rc.nectar.org.au:5000/v3") //Openstack endpoint
+				.credentials(auth.get("email"), auth.get("password"),Identifier.byName("Default")) //Passing credentials
+				.scopeToProject( Identifier.byId(auth.get("projectID")))//Project id
+				.authenticate();//verify the authentication
+		
+		
 		String script = Base64.getEncoder().encodeToString(("#!/bin/bash\n" + "sudo mkdir /home/ubuntu/temp").getBytes());//encoded with Base64. Creates a temporary directory
 		ServerCreate server = Builders.server()//creating a VM server
 				.name("Test")//VM or instance name
 				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
-				.image(imageID)// -image id
-				.keypairName(keyPairName)//key pair name
-				.addSecurityGroup(securityID)	//Security group ID (allow SSH)
+				.image(auth.get("imageID"))// -image id
+				.keypairName(auth.get("keypairName"))//key pair name
+				.addSecurityGroup(auth.get("securityID"))	//Security group ID (allow SSH)
 				.userData(script)
 				.build();//build the VM with above configuration
 			
 		Server booting=os.compute().servers().boot(server);
-		ipAddress=booting.getAccessIPv4();
+		ipAddress = booting.getAccessIPv4();
 	}
 	
 	public Socket connect() {
-		if(!running) return null;
+		if(!active) return null;
 		try {
-			return new Socket("127.0.0.1", port);
+			return new Socket(ipAddress, port);
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

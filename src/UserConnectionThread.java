@@ -42,23 +42,23 @@ public class UserConnectionThread extends Thread {
 			p = input.read() != 0;
 			System.out.println(input.readLine());
 			menuPrint(input);
-			output.writeBytes("2\n");
+			output.writeBytes("1\n");
 			p = input.read() != 0;
 			
 //			request type 1
-//			System.out.println(input.readLine());
-//			output.writeBytes("ITE00100550\n");
-//			System.out.println(input.readLine());
-//			output.writeBytes("1863\n");
-//			System.out.println(input.readLine());
-//			output.writeBytes("1\n");
-//			
-//			request type 2
+			System.out.println(input.readLine());
+			output.writeBytes("ITE00100550\n");
 			System.out.println(input.readLine());
 			output.writeBytes("1863\n");
 			System.out.println(input.readLine());
 			output.writeBytes("1\n");
 			
+//			request type 2
+//			System.out.println(input.readLine());
+//			output.writeBytes("1863\n");
+//			System.out.println(input.readLine());
+//			output.writeBytes("1\n");
+//			
 			System.out.println(input.readLine());
 			
 			input.close();

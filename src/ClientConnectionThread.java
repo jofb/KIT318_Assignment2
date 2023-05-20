@@ -204,6 +204,7 @@ class ClientConnectionThread extends Thread {
 			{
 				query.wait();
 			}
+			System.out.println(query.response.responseBody);
 
 			// TODO can change this to format response body
 			output.writeBytes("Response: " + query.response.responseBody + "\n");
