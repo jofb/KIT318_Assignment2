@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -116,7 +118,7 @@ class WorkHandler extends Thread {
 				case VIEW:
 					id = Integer.parseInt(params.get("requestId"));
 					String currentStatus = requests.get(id).returnStatus();
-					response = "Your query has processed " + currentStatus + " items";
+					response = currentStatus;
 					// find out status of the id
 					// (i.e compare the number of results to the total of expected results)
 					break;
@@ -163,6 +165,12 @@ class WorkHandler extends Thread {
 			// if the booleans true, weve got results
 			
 			// receieve results
+			
+			for (WorkerNode worker : workers) {
+				if (!worker.running) {
+					break;
+				}				
+			}
 
 			/* for worker in workers
 			 *   if !worker.running
@@ -197,13 +205,6 @@ class WorkHandler extends Thread {
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
-			}
-						
-			for (WorkerNode worker : workers) {
-				if (!worker.running) {
-					break;
-				}
-				
 			}
 
 			// add any results to some results queue, which can then be read when requesting to see results
@@ -381,6 +382,9 @@ class Request {
 	List<Integer> results;
 	
 	long time;
+	String start_date;
+	String end_date;
+	DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 	
 	Request(int id, int steps, int expectedResults) 
 	{
@@ -388,6 +392,9 @@ class Request {
 		this.totalSteps = steps;
 		this.expectedResults = expectedResults;
 		time = System.currentTimeMillis();
+		
+		LocalDateTime now = LocalDateTime.now();
+		start_date = dtf.format(now);
 		
 		this.step = 1;
 	}
@@ -404,16 +411,30 @@ class Request {
 		
 	//added a new function, in case you want to use the other one for different things
 	String returnStatus() {
-		String status = results.size() + "/" + expectedResults;
+		//String status = results.size() + "/" + expectedResults;
 		
-		// if status is compelte
-		
-		// when its complete
-		time = System.currentTimeMillis() - time;
-		
-		// then also return bill (results + price + time)
-		
-		return status;
+		// if status is complete
+		if (results.size()/expectedResults == 1) {
+			time = System.currentTimeMillis() - time;
+			time = time/1000;  //to seconds
+			time = time/60;  //to minutes (not going to bother with hours)
+			end_date = dtf.format(LocalDateTime.now());
+			String resultsString = "";
+			
+			for (int item : results) {
+				resultsString += Integer.toString(item) + ", ";
+			}
+			
+			//would be cool if we could give info about their query here but don't think it's possible?
+			String statement = "The result for your query is: " + resultsString + "\n";
+			statement += "Start Date: " + start_date + ", End Date: " + end_date + ", Time Taken (minutes): " + time + "\n";
+			statement += "Total Cost ($3/minute): $" + 3*time;			
+			return statement;
+		} else {
+			String statement = "Your query is still being processed. It is currently " + results.size()/expectedResults +
+					"% complete";
+			return statement;
+		}
 	}
 }
 
