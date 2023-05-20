@@ -69,11 +69,11 @@ public class WorkNode {
 			// it wants to see if we have some results, do we?
 			if(request == 1)
 			{
-				// check if the thread is done with its work
-				
-				// send back boolean indiciating whether its done with work
-				
-				// if true, then send back reults
+				output.writeInt(thread.isFinished());
+				if (thread.isFinished() == 1) {  //checks if it's finished (code in WorkNodeThread needs to be completed)
+					output.write(thread.getRequestId());
+					output.write(thread.getResult());
+				}
 			}
 			// it wants to pass in some work, whats it got?
 			else if (request == 2)
@@ -103,7 +103,7 @@ public class WorkNode {
 				List<Integer> data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
 				
 				// tell the worknode thread to do some work (pass in the data, and then notify)
-				thread.setData(requestType, data);
+				thread.setData(requestType, requestId, data);
 				data.notify();
 			}
 			weatherServer.close();

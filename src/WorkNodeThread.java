@@ -5,6 +5,7 @@ public class WorkNodeThread extends Thread {
 	public boolean working;
 	private volatile List<Integer> data;
 	private volatile int requestType;
+	private volatile int requestId;
 	
 	private volatile int result;
 	
@@ -32,14 +33,29 @@ public class WorkNodeThread extends Thread {
 		}
 	}
 	
-	public void setData(int _requestType, List<Integer> _data)
+	public void setData(int _requestType, int _requestId, List<Integer> _data)
 	{
 		data = _data;
+		requestId = _requestId;
 		requestType = _requestType;
+	}
+	
+	public int getRequestId()
+	{
+		return requestId;
 	}
 	
 	public int getResult()
 	{
 		return result;
+	}
+	
+	public int isFinished() {
+		//TODO write the code to actually check this
+		int finished = 0;  //0 not finished, 1 finished
+		
+		//if statement here
+		
+		return  finished;
 	}
 }

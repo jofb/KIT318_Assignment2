@@ -166,10 +166,36 @@ class WorkHandler extends Thread {
 			
 			// receieve results
 			
+			//TODO fix this start that I've made
 			for (WorkerNode worker : workers) {
 				if (!worker.running) {
 					break;
-				}				
+				}
+				
+				// try to connect to worker node
+				try {
+					Socket s = new Socket(worker.ipAddress, worker.port);
+					// input and output streams
+					BufferedReader input = new BufferedReader(new InputStreamReader(s.getInputStream()));
+					DataOutputStream output = new DataOutputStream(s.getOutputStream());
+					int finished = 0;  //0 not finished, 1 finished
+					Request currentRequest;
+					
+					// to check status
+					output.write(1);
+					finished = input.read();
+					
+					if (finished == 1) {						
+						int requestid = input.read();
+						currentRequest = requests.get(Integer.valueOf(requestid));  //finds current request in map						
+						currentRequest.results.add(input.read());  //adds the int to the results (add for each loop if more than 1 result?)
+					}
+					
+					s.close();					
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
 			}
 
 			/* for worker in workers
