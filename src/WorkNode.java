@@ -95,22 +95,22 @@ public class WorkNode {
 //				downloadFile(weatherServer.getInetAddress().toString(), filename);
 //				
 				System.out.println("Filename: " + filename);
-//				
-//				// next, read from the downloaded file
-//				String homeDir = System.getProperty("user.home"); 
-//				Scanner sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
-//				
-//				List<String> lines = new ArrayList<String>();
-//				
-//				while(sc.hasNextLine())
-//				{
-//					// splitting by comma
-//					String line = sc.nextLine();
-//					lines.addAll(Arrays.asList(line.split(",")));
-//				}
-//				// map to list of integers
-//				List<Integer> data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
-				List<Integer> data = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+				
+				// next, read from the downloaded file
+				String homeDir = System.getProperty("user.home"); 
+				Scanner sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
+				
+				List<String> lines = new ArrayList<String>();
+				
+				while(sc.hasNextLine())
+				{
+					// splitting by comma
+					String line = sc.nextLine();
+					lines.addAll(Arrays.asList(line.split(",")));
+				}
+				// map to list of integers
+				List<Integer> data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
+				//List<Integer> data = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
 				// tell the worknode thread to do some work (pass in the data, and then notify)
 				thread.setData(requestType, requestId, data);
 				synchronized(lock)
@@ -128,9 +128,9 @@ public class WorkNode {
 		try {
 			// TODO work node needs to know the host IP, plus have a private key on them
 			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-			String host = "203.101.231.239";  //ip of our weather server. CHANGE THIS?
+			String host = "115.146.86.36";  //ip of our weather server. CHANGE THIS?
 			String user = "ubuntu";
-			String privateKey = homeDir + "/it318-assignment2-ssh.pem"; //this is the bugged line. Probably a .pem
+			String privateKey = homeDir + "/kit318_assignment2_ssh.pem"; //this is the bugged line. Probably a .pem
 			JSch jsch = new JSch();
 			Session session = jsch.getSession(user, host, 22);
 			Properties config = new Properties();
