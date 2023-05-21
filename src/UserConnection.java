@@ -11,14 +11,17 @@ public class UserConnection {
 	Socket clientSocket;
 	int clientNumber;
 	
-	public UserConnection(Socket clientSocket, int clientNumber) {
-		this.clientSocket = clientSocket;
-		this.clientNumber = clientNumber;
+	private static Socket serverSocket;
+	private static BufferedReader input;
+	private static DataOutputStream output;
+	
+	public UserConnection() {
+
 	}
 	// reads multiple lines from server, exiting on an empty line
-	private static void menuPrint(BufferedReader input) throws IOException {
+	private static void menuPrint(BufferedReader serverInput) throws IOException {
 		String line;
-		while ((line = input.readLine()) != null) { 
+		while ((line = serverInput.readLine()) != null) { 
 			if(line.length() == 0) break;
 			// print the line
 			System.out.println("Server: " + line);
@@ -26,7 +29,7 @@ public class UserConnection {
 	}
 	
 	// send an arbitrary number of user inputs to the server
-	private static void multiLineUserInput(BufferedReader serverInput, BufferedReader input, DataOutputStream output) throws IOException
+	private static void multiLineUserInput(BufferedReader serverInput, BufferedReader userInput, DataOutputStream output) throws IOException
 	{
 		// get as many inputs as the server needs by having the server first send that number
 		int inputs = serverInput.read();
@@ -35,20 +38,20 @@ public class UserConnection {
 			// first read in the question from server
 			System.out.println(serverInput.readLine());
 			// next send the user input
-			output.writeBytes(input.readLine() + "\n");
+			output.writeBytes(userInput.readLine() + "\n");
 		}
 	}
 	
 	public static void main(String[] args) throws Exception {
 		try {
 			// change to match destination address
-			Socket socket = new Socket("115.146.86.36", 9000);
+			serverSocket = new Socket("115.146.85.146", 9000);
 			
 			// TODO this should be a loop similar to on server side, only breaking when user exits
 			
 			// input and output streams
-			BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-			DataOutputStream output = new DataOutputStream(socket.getOutputStream());
+			input = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
+			output = new DataOutputStream(serverSocket.getOutputStream());
 			// inputstream for user input
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			
@@ -77,6 +80,7 @@ public class UserConnection {
 	            case "1":
 	            	// print out the register user menu
 	            	menuPrint(input);
+	            	System.out.println();
 	            	break;
 	            
 	            // login user case
@@ -155,15 +159,15 @@ public class UserConnection {
 			}
 
             // get the response from server
-            line = input.readLine();
-            System.out.println(line);
+            menuPrint(input);
 
-			// TODO move these closes to a finally block
-			input.close();
-			output.close();
-			socket.close();
 		} catch(Exception e){
 			System.out.println(e);
+		} finally
+		{
+			input.close();
+			output.close();
+			serverSocket.close();
 		}
 	}
 }

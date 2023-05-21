@@ -15,8 +15,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import java.util.TreeMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Base64;
+import java.util.Collections;
+
 import org.openstack4j.api.Builders;
 import org.openstack4j.api.OSClient.OSClientV3;
 import org.openstack4j.model.common.Identifier;
@@ -45,7 +48,6 @@ class WorkHandler extends Thread {
 	// map from requestid to request object
 	Map<Integer, Request> requests = new HashMap<Integer, Request>();
 
-
 	Queue<WorkUnit> workQueue = new LinkedBlockingQueue<WorkUnit>();
 
 	WorkHandler(Queue<Query> requestQueue) {
@@ -65,7 +67,7 @@ class WorkHandler extends Thread {
 		WorkerNode w5 = new WorkerNode(false, "email", "password","projectID","imageID","keypair","securitygroup");
 
 		//workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
-		w1.ipAddress = "131.217.174.74";
+		w1.ipAddress = "203.101.231.210";
 		w1.port = 9000;
 		workers = new ArrayList<WorkerNode>();
 		workers.add(w1);
@@ -73,62 +75,92 @@ class WorkHandler extends Thread {
 		/* we also want to initialize the first three virtual machines */
 		/* ideally this should pause the main thread while they're starting */
 		/* this can be done with synchronized(this) notify();, and on main thread do synchronized(thread) thread.wait(); */
+		System.out.println("Initializing workers...");
 //		w1.initVM();
 //		w2.initVM();
 //		w3.initVM();
 //		
-		// and ideally we have some way of telling when they're done (can't remember if there's a way)
+		// will just wait 4 minutes for vms to start
+		try {
+			Thread.sleep(1000); // TODO change this to 240000
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		System.out.println("Workers initialized!");
+		// and tell the main thread to start up
+		synchronized(this)
+		{
+			notify();
+		}
 		// ITE00100550
 		while(true)
 		{
-			System.out.println("Waiting for Requests...");
 			// wait for updates to request queue
 			synchronized(queryQueue)
 			{
 				try {
-					// this will wait until requestQueue is notified, OR 1 minute TODO change to 5 (or w/e is appropriate)
-					queryQueue.wait(60000);
+					boolean waitTime = !workQueue.isEmpty();
+					// if there is no work in the queue, and no results expected, just wait for query queue
+					for(WorkerNode worker : workers)
+					{
+						// has work, need results
+						if(worker.workingOn != null)
+						{
+							waitTime = true;
+							break;
+						}
+					}
+					// if needed, update every 10s, otherwise only cycle when there are queries
+					if(waitTime) queryQueue.wait(10000);
+					else queryQueue.wait();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
 			}
-
-
+			
+			
 			for(Query query : queryQueue)
 			{
-				// parse each query and handle
-
+				System.out.println("Processing query " + query.queryId + "(" + query.queryType.toString() + ")");
 				Map<String, String> params = query.queryParams;
 				int id;
 				String response = "";
 				
-				switch(query.queryType)
-				{
-				case CREATE:
-					id = createRequest(params);
-					//response to be output, which reminds the user of the request ID
-					response = "A new query has now been created, and is associated with request ID " + id;
-					break;
-				case VIEW:
-					id = Integer.parseInt(params.get("requestId"));
-					
-					String currentStatus = requests.get(id).checkStatus();
-					response = currentStatus;
-					break;
-				case STOP:
-					id = Integer.parseInt(params.get("requestId"));
-					// cancel this id
-					for(WorkUnit work : workQueue)
+				// parse each query and handle
+				try {
+
+					switch(query.queryType)
 					{
-						if(work.requestId == id)
+					case CREATE:
+						id = createRequest(params);
+						response = String.format("A new request has now been created, with request ID [%d]", id);
+						break;
+					case VIEW:
+						id = Integer.parseInt(params.get("requestId"));
+						
+						String currentStatus = requests.get(id).checkStatus();
+						response = currentStatus;
+						break;
+					case STOP:
+						id = Integer.parseInt(params.get("requestId"));
+						// cancel this id
+						for(WorkUnit work : workQueue)
 						{
-							workQueue.remove(work);
+							if(work.requestId == id)
+							{
+								workQueue.remove(work);
+							}
 						}
+						response = String.format("Request [%d] has been deleted", id);
+						requests.remove(id);
+						break;
 					}
-					response = String.format("Request [%d] has been deleted", id);
-					requests.remove(id);
-					break;
+				} catch(Exception e)
+				{
+					response = "There was an error while processing your query!";
 				}
+
 				// once done, create a QueryResponse object and attach to the query
 				query.response = new QueryResponse(response);
 
@@ -139,7 +171,7 @@ class WorkHandler extends Thread {
 				}
 			}
 
-			//TODO fix this start that I've made
+			//poll workers for results
 			for (WorkerNode worker : workers) {
 				if (!worker.active) {
 					continue;
@@ -159,14 +191,18 @@ class WorkHandler extends Thread {
 						int requestid = input.read();
 						// finds current request in map	
 						Request currentRequest = requests.get(Integer.valueOf(requestid));
-						
-						int result = input.read();
-						
+
 						// if its null, the request has been deleted, discard the results
 						if(currentRequest != null)
 						{
-							// i think instead of just storing numbners, could also associate the particular workunit with each result, not sure
-							currentRequest.results.add(input.read());  //adds the int to the results (add for each loop if more than 1 result?)
+							// get back the filename as well, set that to the key
+							String key = input.readLine();
+							// formats it nicely
+							key = key.split("/")[1].split(".txt")[0];
+							key = key.substring(key.indexOf("_") + 1);
+							System.out.println(String.format("Received [%s] %s result", requestid, key));
+							int result = input.read();
+							currentRequest.results.put(key, result);
 						}
 						
 						// set worker to not working
@@ -174,16 +210,29 @@ class WorkHandler extends Thread {
 					}
 					
 					s.close();					
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
+				} // TODO should wrap these in functions
+				catch (UnknownHostException e) {
 					//e.printStackTrace();
+					System.out.println("Connection refused! Restarting worker " + worker.ipAddress + "...");
 					// reassign the work to different worker
 					WorkUnit w = worker.workingOn;
 					if(w != null) workQueue.add(w);
 					worker.available = false;
 					worker.active = false;
-					// restart the vm?
-					
+					// TODO restart the vm?
+					worker.shutDownServer();
+				} catch (IOException e) {
+					//e.printStackTrace();
+					System.out.println("Connection refused! Restarting worker " + worker.ipAddress + "...");
+					// reassign the work to different worker
+					WorkUnit w = worker.workingOn;
+					if(w != null) workQueue.add(w);
+					worker.available = false;
+					worker.active = false;
+					// TODO restart the vm?
+					worker.shutDownServer();
+				} catch (Exception e) {
+					e.printStackTrace();
 				}
 			}
 			
@@ -191,7 +240,7 @@ class WorkHandler extends Thread {
 			
 			for(WorkerNode worker : workers)
 			{
-				if(!worker.active && !worker.available)
+				if(!worker.active && !worker.available && !workQueue.isEmpty())
 				{
 					continue;
 				}
@@ -204,6 +253,7 @@ class WorkHandler extends Thread {
 				WorkUnit work = workQueue.poll();
 				
 				// if there's nothing left in the queue, just leave
+				worker.workingOn = work;
 				if(work == null) break;
 				
 				// connect to worker
@@ -215,6 +265,7 @@ class WorkHandler extends Thread {
 					
 					output.write(work.requestType);
 					output.write(work.requestId);
+					output.writeBytes(work.metadata + "\n");
 					output.writeBytes(work.data + "\n");
 					
 					s.close();
@@ -223,7 +274,6 @@ class WorkHandler extends Thread {
 					e.printStackTrace();
 				}
 				worker.available = false;
-				worker.workingOn = work;
 			}
 			// check workqueue size compared to workers active
 			// if larger then start new workers
@@ -244,8 +294,8 @@ class WorkHandler extends Thread {
 		
 		String option;
 		String id;
+		String metadata = "";
 		List<String> station;
-		int steps = 1;
 		
 		switch(requestType)
 		{
@@ -314,10 +364,10 @@ class WorkHandler extends Thread {
 		case 3:
 			// TODO not done yet
 			id = params.get("stationId");
-			steps = 2;
 			option = "TMAX";
 			int highLow = Integer.parseInt(params.get("minMax")); // this needs to be put on the request object
 
+			metadata = Integer.toString(highLow);
 			station = WeatherServer.dataByYearID.get(params.get("year")).get(id);
 			
 			for(String data : station)
@@ -341,11 +391,15 @@ class WorkHandler extends Thread {
 			break;
 		}
 		
-		Request r = new Request(requestId, steps, work.entrySet().size());
-		r.results = new ArrayList<Integer>();
+		Request r = new Request(requestId, work.entrySet().size());
+		if(requestType == 3) r.expectedResults = 1; // hacky fix 
+		
+		r.requestType = requestType;
+		r.params = params;
+		r.results = new HashMap<String, Integer>();
 		requests.put(requestId, r);
 		
-		System.out.println(work.entrySet().size());
+		System.out.println(String.format("Generated %d work units", work.entrySet().size()));
 
 		for (Map.Entry<String, List<Integer>> entry : work.entrySet())
 		{
@@ -374,6 +428,7 @@ class WorkHandler extends Thread {
 			w.requestId = requestId;
 			w.requestType = requestType;
 			w.data = filename;
+			w.metadata = metadata;
 			
 			switch(requestType)
 			{
@@ -394,27 +449,39 @@ class WorkHandler extends Thread {
 
 class Request {
 	int id;
-	int step;
-	int totalSteps;
 	int expectedResults;
-	List<Integer> results;
+	int requestType;
+	Map<String, String> params;
+	Map<String, Integer> results;
 	
 	long time;
 	String start_date;
 	String end_date;
 	DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 	
-	Request(int id, int steps, int expectedResults) 
+	Request(int id, int expectedResults) 
 	{
 		this.id = id;
-		this.totalSteps = steps;
 		this.expectedResults = expectedResults;
 		time = System.currentTimeMillis();
 		
 		LocalDateTime now = LocalDateTime.now();
 		start_date = dtf.format(now);
+	}
+	
+	String formattedRequestType()
+	{
+		String y = params.get("year");
+		String id = params.get("stationId");
+		String minMax = params.get("minMax");
 		
-		this.step = 1;
+		String[] requests = {
+				String.format("Average monthly %s temperature for station %s in %s", (minMax == "0"? "min" : "max"), id, y),
+				String.format("Average yearly %s temperature in %s", (minMax == "0"? "min" : "max"), y),
+				String.format("Month with %s temperature for %s in %s", (minMax == "0"? "lowest" : "highest"), id, y)
+		};
+
+		return requests[requestType - 1];
 	}
 
 	//added a new function, in case you want to use the other one for different things
@@ -427,10 +494,14 @@ class Request {
 			time = time / 1000;  //to seconds
 			time = time / 60;  //to minutes (not going to bother with hours)
 			end_date = dtf.format(LocalDateTime.now());
-			String resultsString = results.toString();
+			// TODO format the results nicer
+			Map<String, Integer> tree = new TreeMap<String, Integer>(results);
+			String resultsString = tree.toString();
+			resultsString = resultsString.replace("=", ": ").replace("{", "[ ").replace("}", " ]");
 
 			// would be cool if we could give info about their query here but don't think it's possible?
-			String statement = String.format("The result for your query is: %s\n" +
+			String statement = String.format("Request: " + formattedRequestType() + "\n" +
+					"Results: %s\n" +
 					"Start Date: %s, End Date: %s, Time taken (minutes): %d\n" +
 					"Total Cost ($3/minute): $%d", resultsString, start_date, end_date, time, 3 * time);			
 			return statement;
@@ -447,6 +518,7 @@ class WorkUnit {
 	Integer requestId;
 	Integer requestType;
 	String data;
+	String metadata;
 	int priority = 1;
 }
 
@@ -465,6 +537,7 @@ class WorkerNode {
 	OSClientV3 os = null;
 	
 	String ipAddress;
+	String serverId;
 	int port = 9000;
 	
 	// TODO pass in the auth information
@@ -493,9 +566,16 @@ class WorkerNode {
 				.authenticate();//verify the authentication
 		
 		
-		String script = Base64.getEncoder().encodeToString(("#!/bin/bash\n" + "sudo mkdir /home/ubuntu/temp").getBytes());//encoded with Base64. Creates a temporary directory
+		// initializes work node, compiles and runs
+		String script = Base64.getEncoder().encodeToString((
+				"#!/bin/bash\n" + 
+				"sudo mkdir /home/ubuntu/temp\n" + 
+				"sudo apt-get update\n" + 
+				"sudo apt-get upgrade\n" +
+				"javac -cp libs/*:. -sourcepath . *.java" +
+				"java -cp libs/*:. WorkNode").getBytes());// encoded with Base64
 		ServerCreate server = Builders.server()//creating a VM server
-				.name("Test")//VM or instance name
+				.name("KIT318-Worker-Node")//VM or instance name
 				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
 				.image(auth.get("imageID"))// -image id
 				.keypairName(auth.get("keypairName"))//key pair name
@@ -505,18 +585,25 @@ class WorkerNode {
 			
 		Server booting=os.compute().servers().boot(server);
 		ipAddress = booting.getAccessIPv4();
+		serverId = booting.getId();
 	}
 	
-	public Socket connect() {
+	public void shutDownServer()
+	{
+		os.compute().servers().delete(serverId);
+	}
+	
+	public void restartWorker()
+	{
+		shutDownServer();
+		// wait for shutdown
+		
+	}
+	
+	public Socket connect() throws UnknownHostException, IOException {
 		if(!active) return null;
-		try {
-			return new Socket(ipAddress, port);
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return null;
+		return new Socket(ipAddress, port);
+		//return null;
 	}
 	
 }

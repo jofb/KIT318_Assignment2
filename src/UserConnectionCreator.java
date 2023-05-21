@@ -15,7 +15,7 @@ public class UserConnectionCreator {
 			int clientnumber = 0;
 			
 			while(clientnumber < totalclients){
-				Socket clientSocket=new Socket("115.146.86.36", 9000);
+				Socket clientSocket=new Socket("127.0.0.1", 9000);
 				UserConnectionThread wt = new UserConnectionThread(clientSocket,clientnumber);
 				wt.start();
 				clientnumber++;

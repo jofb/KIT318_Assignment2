@@ -97,7 +97,6 @@ class ClientConnectionThread extends Thread {
 			
 			String actionChoice="";
 			Map<String, String> queryParams = new HashMap<String, String>();
-			
 			boolean validCommand = false;
 			// print out the first menu
 			output.writeBytes("Select your action...\n");
@@ -189,25 +188,37 @@ class ClientConnectionThread extends Thread {
 				query.queryType = QueryType.STOP;
 				break;
 			}
+			if(actionChoice.equals("0"))
+			{
+				input.close();
+				output.close();
+				serverClient.close();
+				return;
+			}
 			query.queryParams = queryParams;
-			
-			// take command from user
-			// e.g view request, create request, stop request, etc
-			// execute the command
-			// all commands will have to go back through the server to get the information from workers, so 
-			// feel free to make getters/setters on the server
 
-			WeatherServer.addQuery(query);
-			
 			// wait for query to be notified (when the response is ready)
 			synchronized(query)
 			{
+				WeatherServer.addQuery(query);
 				query.wait();
 			}
-			System.out.println(query.response.responseBody);
+			String[] parts = query.response.responseBody.split("\n");
+
+			if(parts.length == 1) {
+				output.writeBytes(query.response.responseBody + "\n");
+			}
+			else 
+			{
+				for(String s : parts)
+				{
+					output.writeBytes(s + "\n");
+				}
+			}
+			//System.out.print
 
 			// TODO can change this to format response body
-			output.writeBytes("Response: " + query.response.responseBody + "\n");
+//			output.writeBytes("Response: " + query.response.responseBody + "\n");
 			requestQueue.remove(query);
 			// closing streams
 			input.close();

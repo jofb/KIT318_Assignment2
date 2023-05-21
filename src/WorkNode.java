@@ -24,28 +24,13 @@ import com.jcraft.jsch.SftpException;
 /* WorkNode will continually wait for connection, and then complete the given work when it receives one */
 public class WorkNode {
 	
-	private static final String WORK_DATA_PATH = "work_data.txt";
 	
 	public static volatile Object result = null;
-	private static volatile boolean working = false;
 
-	// reads multiple lines from server and returns as a List of strings
-	private static List<String> multiLineRead(BufferedReader input) throws IOException {
-		List<String> lines = new ArrayList<String>();
-		List<Integer> d = new ArrayList<Integer>();
-		String line;
-		while ((line = input.readLine()) != null) { 
-			if(line.length() == 0) break;
-			// print the line
-			lines.add(line);
-		}
-		return lines;
-	}
-	
 	public static void main(String[] args) throws Exception
 	{
 		// the worker node is a server in of itself, it waits for connections from the weather server
-		ServerSocket worker = new ServerSocket(9000);
+		ServerSocket worker = new ServerSocket(9000); 
 		
 		Socket weatherServer;
 		BufferedReader input;
@@ -55,9 +40,10 @@ public class WorkNode {
 		
 		WorkNodeThread thread = new WorkNodeThread(lock);
 		thread.start();
-		
+		System.out.println("Waiting for work...");
 		while(true)
 		{
+			
 			// wait for connection from server
 			weatherServer = worker.accept();
 			
@@ -76,11 +62,13 @@ public class WorkNode {
 			{
 				boolean finished = thread.isFinished();
 				output.writeBoolean(finished);
-				if (finished) {  //checks if it's finished (code in WorkNodeThread needs to be completed)
+				if (finished) {  
 					output.write(thread.getRequestId());
+					output.writeBytes(thread.getKey() + "\n");
 					output.write(thread.getResult());
 					
 					System.out.println("Returning results: " + thread.getResult());
+					thread.setResult(null);
 				}
 			}
 			// it wants to pass in some work, whats it got?
@@ -88,31 +76,12 @@ public class WorkNode {
 			{
 				int requestType = input.read();
 				int requestId = input.read();
+				String options = input.readLine();
 				String filename = input.readLine();
 
-				// SSH broken, dummy data below:
-				// TODO downloading should be moved into the thread
-//				downloadFile(weatherServer.getInetAddress().toString(), filename);
-//				
-				System.out.println("Filename: " + filename);
-				
-				// next, read from the downloaded file
-				String homeDir = System.getProperty("user.home"); 
-				Scanner sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
-				
-				List<String> lines = new ArrayList<String>();
-				
-				while(sc.hasNextLine())
-				{
-					// splitting by comma
-					String line = sc.nextLine();
-					lines.addAll(Arrays.asList(line.split(",")));
-				}
-				// map to list of integers
-				List<Integer> data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
-				//List<Integer> data = new ArrayList<Integer>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
-				// tell the worknode thread to do some work (pass in the data, and then notify)
-				thread.setData(requestType, requestId, data);
+				// give the thread the file to download, then wait for it to complete work
+				thread.setDownloadParams(weatherServer.getInetAddress().toString(), filename);
+				thread.setData(requestType, requestId, options);
 				synchronized(lock)
 				{
 					lock.notify();
@@ -120,40 +89,6 @@ public class WorkNode {
 
 			}
 			weatherServer.close();
-		}
-	}
-	
-	public static void downloadFile(String ip, String path) {
-
-		try {
-			// TODO work node needs to know the host IP, plus have a private key on them
-			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
-			String host = "115.146.86.36";  //ip of our weather server. CHANGE THIS?
-			String user = "ubuntu";
-			String privateKey = homeDir + "/kit318_assignment2_ssh.pem"; //this is the bugged line. Probably a .pem
-			JSch jsch = new JSch();
-			Session session = jsch.getSession(user, host, 22);
-			Properties config = new Properties();
-			jsch.addIdentity(privateKey);
-			jsch.setKnownHosts(".ssh/known_hosts");
-			System.out.println("identity added ");
-			config.put("StrictHostKeyChecking", "no");
-			session.setConfig(config);
-			session.connect();
-
-			Channel channel = session.openChannel("sftp");
-			channel.connect();
-			ChannelSftp sftpChannel = (ChannelSftp) channel;
-			sftpChannel.get(path, homeDir + "/" + WORK_DATA_PATH);
-
-			sftpChannel.exit();
-			session.disconnect();
-		} catch (JSchException e) {
-			e.printStackTrace();
-		} catch (SftpException e) {
-			e.printStackTrace();
-		} catch (Exception e) {
-			System.out.println(e);
 		}
 	}
 }

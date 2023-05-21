@@ -25,17 +25,46 @@ public class WeatherServer{
 	// list of passwords for registered users
     static List<String> passwordList = new ArrayList<String>();
     
-    public static Map<String, List<String>> dataByID;
-    public static Map<String, List<String>> dataByYear;
     public static Map<String, Map<String, List<String>>> dataByYearID;
 
 	public static void main(String[] args) throws Exception {
 		
+		TimestampedPrint timestampOut = new TimestampedPrint(System.out);
+		
+		System.setOut(timestampOut);
+		
 		queryQueue = new LinkedBlockingQueue<Query>();
 		workHandler = new WorkHandler(queryQueue);
+		
+		// initialize dataset
+		
+		// can use command line arg or set manually
+		System.out.println("Processing datasets...");
+		dataByYearID = new HashMap<String, Map<String, List<String>>>();
+		for(String arg : args)
+		{
+			List<String> data = processData(arg);
+			HashMap<String, List<String>> dataByID = dataSplit(data, 0);
+			String year = data.get(0).split(",")[1].substring(0, 4); // disgusting but works
+			
+			dataByYearID.put(year, dataByID);
+			int size = 0;
+			for(Map.Entry<String, List<String>> entry : dataByID.entrySet())
+			{
+				size += entry.getValue().size();
+			}
+			System.out.println("Processed dataset with size " + size);
+		}
+		System.out.println("Datasets initialized!");
 
 		// starting up the work handler thread
 		workHandler.start();
+		
+		// wait for workers to start
+		synchronized(workHandler)
+		{
+			workHandler.wait();
+		}
 		
 		// TODO remove this, admin password
 		passwordList.add("password");
@@ -47,30 +76,10 @@ public class WeatherServer{
 		try {
 			// list of client threads
 			List<ClientConnectionThread> serverThreads = new ArrayList<>();
-			
-			// can use command line arg or set manually
-			dataByYearID = new HashMap<String, Map<String, List<String>>>();
-			//dataByYear = new HashMap<String, List<String>>();
-			for(String arg : args)
-			{
-				List<String> data = processData(arg);
-				dataByID = dataSplit(data, 0);
-				String year = data.get(0).split(",")[1].substring(0, 4); // disgusting but works
-				
-				dataByYearID.put(year, dataByID);
-			}
-
-			// dataByYearID > year > ids in each year
-			//List<String> data = processData(args[0]);
-			// List<String> data = processData("C:\\Users\\Jordan\\Downloads\\1863.csv");
-
-//			dataByID = dataSplit(data, 0);
-//			dataByYear = new HashMap<String, List<String>>();
-//			dataByYear.put("1863", data);
 
 			int counter = 0;
 			
-			System.out.println("Server started ...");
+			System.out.println("Server started...");
 
 			// every time we want to accept a new user need a thread open
 			while(true) {
