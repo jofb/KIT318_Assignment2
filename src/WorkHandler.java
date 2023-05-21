@@ -64,16 +64,21 @@ class WorkHandler extends Thread {
 		WorkerNode w4 = new WorkerNode(false, "email", "password","projectID","imageID","keypair","securitygroup");
 		WorkerNode w5 = new WorkerNode(false, "email", "password","projectID","imageID","keypair","securitygroup");
 
-		workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
+		//workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
+		w1.ipAddress = "131.217.174.74";
+		w1.port = 9000;
+		workers = new ArrayList<WorkerNode>();
+		workers.add(w1);
 		
 		/* we also want to initialize the first three virtual machines */
 		/* ideally this should pause the main thread while they're starting */
+		/* this can be done with synchronized(this) notify();, and on main thread do synchronized(thread) thread.wait(); */
 //		w1.initVM();
 //		w2.initVM();
 //		w3.initVM();
 //		
 		// and ideally we have some way of telling when they're done (can't remember if there's a way)
-		
+		// ITE00100550
 		while(true)
 		{
 			System.out.println("Waiting for Requests...");
@@ -171,7 +176,14 @@ class WorkHandler extends Thread {
 					s.close();					
 				} catch (Exception e) {
 					// TODO Auto-generated catch block
-					e.printStackTrace();
+					//e.printStackTrace();
+					// reassign the work to different worker
+					WorkUnit w = worker.workingOn;
+					if(w != null) workQueue.add(w);
+					worker.available = false;
+					worker.active = false;
+					// restart the vm?
+					
 				}
 			}
 			
@@ -186,7 +198,7 @@ class WorkHandler extends Thread {
 				// first check if we're meant to be using priority (some bool on weather server likely)
 				// if yes then can reduce based on highest priority
 				// and set that to work
-				// WorkUnit = work = workQueue.stream().reduce((w1, w2) -> w1.priority >= w2.priority ? w1 : w2);
+				// WorkUnit work = workQueue.stream().reduce((w1, w2) -> w1.priority >= w2.priority ? w1 : w2);
 				
 				// this is either first come first serve, or priority
 				WorkUnit work = workQueue.poll();
@@ -213,6 +225,9 @@ class WorkHandler extends Thread {
 				worker.available = false;
 				worker.workingOn = work;
 			}
+			// check workqueue size compared to workers active
+			// if larger then start new workers
+			// else delte workers 
 		}
 	}
 	private int createRequest(Map<String, String> params)
@@ -345,7 +360,7 @@ class WorkHandler extends Thread {
 			try {
 				FileWriter fileWriter = new FileWriter(output);
 				
-				String line = values.toString();
+				String line = values.toString().replace(" ", "");
 				// need to exclude the square brackets from the list.toString()
 				fileWriter.write(line.substring(1, line.length() - 1));
 				
@@ -363,10 +378,10 @@ class WorkHandler extends Thread {
 			switch(requestType)
 			{
 			case 1:
-			case 2:
+			case 3:
 				w.priority = 1;
 				break;
-			case 3:
+			case 2:
 				w.priority = 5;
 				break;
 			}
@@ -415,11 +430,9 @@ class Request {
 			String resultsString = results.toString();
 
 			// would be cool if we could give info about their query here but don't think it's possible?
-			String statement = String.format("""
-					The result for your query is: %s\n
-					Start Date: %s, End Date: %s, Time taken (minutes): %d\n
-					Total Cost ($3/minute): $%d
-					""", resultsString, start_date, end_date, time, 3 * time);			
+			String statement = String.format("The result for your query is: %s\n" +
+					"Start Date: %s, End Date: %s, Time taken (minutes): %d\n" +
+					"Total Cost ($3/minute): $%d", resultsString, start_date, end_date, time, 3 * time);			
 			return statement;
 		} else {
 			String statement = "Your query is still being processed. It is currently " + status +
