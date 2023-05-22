@@ -57,7 +57,7 @@ public class WorkNodeThread extends Thread {
 			System.out.println("Downloading file: " + filename + "...");
 			
 			// next, read from the downloaded file
-			String homeDir = System.getProperty("user.home"); 
+			String homeDir = "/home/ubuntu"; 
 			Scanner sc;
 			try {
 				sc = new Scanner(new File(homeDir + "/" + WORK_DATA_PATH));
@@ -158,7 +158,7 @@ public class WorkNodeThread extends Thread {
 
 		try {
 			// TODO work node needs to know the host IP, plus have a private key on them
-			String homeDir = System.getProperty("user.home"); // get the home directory of the current user on the VM
+			String homeDir = "/home/ubuntu"; // get the home directory of the current user on the VM
 			String host = ip.substring(1);  //ip of the weather server to download from
 			String user = "ubuntu";
 			String privateKey = homeDir + "/kit318_assignment_ssh.pem"; //this is the bugged line. Probably a .pem

@@ -76,7 +76,7 @@ class WorkHandler extends Thread {
 				"3aea2efef75046f98f78cb3961388169",
 				"d76daf9e-1150-4e89-90b7-d6d98e7d7b21",
 				"tut7",
-				"f3afa7ea-412d-4253-8e78-75d75ab8bd64"
+				"a37dc379-f34f-46b5-8633-ce3cc6a5e473"
 		};
 		String[] auth3 = {
 				"email", 
@@ -88,8 +88,8 @@ class WorkHandler extends Thread {
 		};
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
-		WorkerNode w1 = new WorkerNode(false, auth1);
-		WorkerNode w2 = new WorkerNode(true, auth2); // TODO make w2 and w3 true
+		WorkerNode w1 = new WorkerNode(false, auth1); // TODO make w1 true
+		WorkerNode w2 = new WorkerNode(true, auth2);
 		WorkerNode w3 = new WorkerNode(true, auth2);
 		WorkerNode w4 = new WorkerNode(false, auth3);
 		WorkerNode w5 = new WorkerNode(false, auth3);
@@ -112,7 +112,7 @@ class WorkHandler extends Thread {
 
 		// wait an additional 10 seconds
 		try {
-			Thread.sleep(30000); 
+			Thread.sleep(40000); 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -646,7 +646,8 @@ class WorkerNode {
 				"sudo mkdir /home/ubuntu/temp\n" + 
 				"sudo apt-get update\n" + 
 				"sudo apt-get upgrade\n" +
-				"/home/ubuntu/run-worker.sh").getBytes());// encoded with Base64
+				"cd /home/ubuntu\n" +
+				"./run_worker.sh").getBytes());// encoded with Base64
 		ServerCreate server = Builders.server()//creating a VM server
 				.name("KIT318-Worker-Node")//VM or instance name
 				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
