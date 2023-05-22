@@ -71,12 +71,12 @@ class WorkHandler extends Thread {
 				"216ad4cd-52a3-4718-94ab-bae4bddcc043"
 		};
 		String[] auth2 = {
-				"email", 
-				"password",
-				"projectID",
-				"imageID",
-				"keypairname",
-				"securitygroupID"
+				"aflood@utas.edu.au", 
+				"MWJmNDFmMTkwZTk0M2Fk",
+				"3aea2efef75046f98f78cb3961388169",
+				"d76daf9e-1150-4e89-90b7-d6d98e7d7b21",
+				"tut7",
+				"f3afa7ea-412d-4253-8e78-75d75ab8bd64"
 		};
 		String[] auth3 = {
 				"email", 
