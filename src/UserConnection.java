@@ -3,14 +3,12 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import java.util.UUID;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /*** Single client, takes in user input from console ***/
 public class UserConnection {
-	
-	Socket clientSocket;
-	int clientNumber;
-	
+
 	private static Socket serverSocket;
 	private static BufferedReader input;
 	private static DataOutputStream output;
@@ -24,7 +22,8 @@ public class UserConnection {
 		while ((line = serverInput.readLine()) != null) { 
 			if(line.length() == 0) break;
 			// print the line
-			System.out.println("Server: " + line);
+			System.out.println(String.format("[%s] %s",  new SimpleDateFormat("HH:mm:ss").format(new Date()), line));
+			//System.out.println("Server: " + line);
 		}
 	}
 	
@@ -45,18 +44,13 @@ public class UserConnection {
 	public static void main(String[] args) throws Exception {
 		try {
 			// change to match destination address
-			serverSocket = new Socket("115.146.85.146", 9000);
-			
-			// TODO this should be a loop similar to on server side, only breaking when user exits
-			
+			serverSocket = new Socket("127.0.0.1", 9000);
+
 			// input and output streams
 			input = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
 			output = new DataOutputStream(serverSocket.getOutputStream());
 			// inputstream for user input
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-			
-			// input line
-			String line;
 
 			// waits for login menu
 			menuPrint(input);
@@ -68,11 +62,12 @@ public class UserConnection {
 				System.out.println("Please enter a number (1 or 2)...");
 				selection = br.readLine();
 			}
-			while (!(selection.equals("1") || selection.equals("2")));
-            
+			while (!(selection.equals("1") || selection.equals("2") || selection.equals("shutdown")));
+
 			// return selection to server
             output.writeBytes(selection + "\n");
-            
+			if(selection.equals("shutdown")) return;
+             
             // options
             switch(selection) 
             {
@@ -106,7 +101,6 @@ public class UserConnection {
 	            	break;
             }
             
-            // TODO this isn't done yet
             // user commands
 			String actionChoice="";
 

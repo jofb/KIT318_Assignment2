@@ -26,6 +26,10 @@ public class WeatherServer{
     static List<String> passwordList = new ArrayList<String>();
     
     public static Map<String, Map<String, List<String>>> dataByYearID;
+    
+    private static boolean runningServer = true;
+    
+    private static ServerSocket server;
 
 	public static void main(String[] args) throws Exception {
 		
@@ -55,7 +59,7 @@ public class WeatherServer{
 			}
 			System.out.println("Processed dataset with size " + size);
 		}
-		System.out.println("Datasets initialized!");
+		System.out.println("Datasets processed!");
 
 		// starting up the work handler thread
 		workHandler.start();
@@ -70,7 +74,7 @@ public class WeatherServer{
 		passwordList.add("password");
 		
 		// open up server on port
-		ServerSocket server = new ServerSocket(9000);
+		server = new ServerSocket(9000);
 
 		// user connection
 		try {
@@ -82,7 +86,7 @@ public class WeatherServer{
 			System.out.println("Server started...");
 
 			// every time we want to accept a new user need a thread open
-			while(true) {
+			while(runningServer) {
 				counter++;
 				// wait for new connection from user
 				Socket client = server.accept();
@@ -92,16 +96,35 @@ public class WeatherServer{
 						new ClientConnectionThread(client, counter, queryQueue);
 				serverThreads.add(thread);
 				thread.start();
-				// break; add this if you just want one connection and then the server close
 			}		
 		} catch(Exception e) {
 			System.out.println(e);
 		} finally {
-			if(server != null) {
-				server.close();
+			try {
+				// this is a bit goofy, but lets the work handler shut down its workers
+				workHandler.runningWorkHandler = false;
+				synchronized(queryQueue)
+				{
+					queryQueue.notify(); 
+				}
+				System.out.println("Shutting down server...");
+			} catch(Exception e)
+			{
+				e.printStackTrace();
 			}
 		}
-		
+	}
+	
+	public static void shutdownServer()
+	{
+		runningServer = false;
+		if(server != null) {
+			try {
+				server.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
     //getter for password list

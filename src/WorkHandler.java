@@ -49,6 +49,8 @@ class WorkHandler extends Thread {
 	Map<Integer, Request> requests = new HashMap<Integer, Request>();
 
 	Queue<WorkUnit> workQueue = new LinkedBlockingQueue<WorkUnit>();
+	
+	public boolean runningWorkHandler = true;
 
 	WorkHandler(Queue<Query> requestQueue) {
 		this.queryQueue = requestQueue;
@@ -59,35 +61,62 @@ class WorkHandler extends Thread {
 		File requestDir = new File(REQUESTS_DIR);
 		requestDir.mkdir();
 		
-		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
-		WorkerNode w1 = new WorkerNode(true, "email", "password","projectID","imageID","keypair","securitygroup");
-		WorkerNode w2 = new WorkerNode(true, "email", "password","projectID","imageID","keypair","securitygroup");
-		WorkerNode w3 = new WorkerNode(true, "email", "password","projectID","imageID","keypair","securitygroup");
-		WorkerNode w4 = new WorkerNode(false, "email", "password","projectID","imageID","keypair","securitygroup");
-		WorkerNode w5 = new WorkerNode(false, "email", "password","projectID","imageID","keypair","securitygroup");
-
-		//workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
-		w1.ipAddress = "203.101.231.210";
-		w1.port = 9000;
-		workers = new ArrayList<WorkerNode>();
-		workers.add(w1);
+		/* AUTHENTICATION INFORMATION FOR NECTAR ACCOUNTS */
+		String[] auth1 = {
+				"jtwylde@utas.edu.au", 
+				"M2I1YzA4NWY4MmFhMmRk",
+				"1a58f808e7c34eab90db080bb6fe67fa",
+				"cd5e6ad6-46af-48a1-bdbc-f12c0db1a69a",
+				"kit318_assignment_ssh",
+				"216ad4cd-52a3-4718-94ab-bae4bddcc043"
+		};
+		String[] auth2 = {
+				"email", 
+				"password",
+				"projectID",
+				"imageID",
+				"keypairname",
+				"securitygroupID"
+		};
+		String[] auth3 = {
+				"email", 
+				"password",
+				"projectID",
+				"imageID",
+				"keypairname",
+				"securitygroupID"
+		};
 		
-		/* we also want to initialize the first three virtual machines */
-		/* ideally this should pause the main thread while they're starting */
-		/* this can be done with synchronized(this) notify();, and on main thread do synchronized(thread) thread.wait(); */
+		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
+		WorkerNode w1 = new WorkerNode(true, auth1);
+		WorkerNode w2 = new WorkerNode(false, auth2); // TODO make w2 and w3 true
+		WorkerNode w3 = new WorkerNode(false, auth2);
+		WorkerNode w4 = new WorkerNode(false, auth3);
+		WorkerNode w5 = new WorkerNode(false, auth3);
+
+		workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
+		// initialize workers
 		System.out.println("Initializing workers...");
-//		w1.initVM();
-//		w2.initVM();
-//		w3.initVM();
-//		
-		// will just wait 4 minutes for vms to start
+		for(WorkerNode worker : workers)
+		{
+			if (!worker.active) break;
+			worker.initVM();
+		}
+		// wait for each IP to be assigned
+		for(WorkerNode worker : workers)
+		{
+			if (!worker.active) break;
+			worker.assignIP();
+			System.out.println("Worker initialized with IP " + worker.ipAddress);
+		}
+
+		// wait an additional 10 seconds
 		try {
-			Thread.sleep(1000); // TODO change this to 240000
+			Thread.sleep(10000); 
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		System.out.println("Workers initialized!");
+		System.out.println("All workers initialized!");
 		// and tell the main thread to start up
 		synchronized(this)
 		{
@@ -119,6 +148,7 @@ class WorkHandler extends Thread {
 				}
 			}
 			
+			if(!runningWorkHandler) break;
 			
 			for(Query query : queryQueue)
 			{
@@ -279,7 +309,20 @@ class WorkHandler extends Thread {
 			// if larger then start new workers
 			// else delte workers 
 		}
+		
+		shutdownWorkers();
 	}
+	
+	private void shutdownWorkers()
+	{
+		for(WorkerNode worker : workers)
+		{
+			if(!worker.active) break;
+			System.out.println("Shutting down worker with IP " + worker.ipAddress);
+			worker.shutDownServer();
+		}
+	}
+	
 	private int createRequest(Map<String, String> params)
 	{
 		// get the request type (to be used in a switch statement)
@@ -511,6 +554,7 @@ class Request {
 			return statement;
 		}
 	}
+
 }
 
 /* Class to store information about a requests work unit */
@@ -541,14 +585,15 @@ class WorkerNode {
 	int port = 9000;
 	
 	// TODO pass in the auth information
-	WorkerNode(boolean start, String email, String password, String projectID, String imageID, String keyPairName, String securityID) {
+	WorkerNode(boolean start, String[] _auth) {
+		// email, password, projectID, imageID, keyPairName, securityID
 		auth = new HashMap<String, String>();
-		auth.put("email", email);
-		auth.put("password", password);
-		auth.put("projectID", projectID);
-		auth.put("imageID", imageID);
-		auth.put("keypairName", keyPairName);
-		auth.put("securityID", securityID);
+		auth.put("email", _auth[0]);
+		auth.put("password", _auth[1]);
+		auth.put("projectID", _auth[2]);
+		auth.put("imageID", _auth[3]);
+		auth.put("keypairName", _auth[4]);
+		auth.put("securityID", _auth[5]);
 		
 		active = start;
 		available = start;
@@ -559,21 +604,24 @@ class WorkerNode {
 	// security group id
 	public void initVM() {
 		// authenticate openstack builder
-		os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
-				.endpoint("https://keystone.rc.nectar.org.au:5000/v3") //Openstack endpoint
-				.credentials(auth.get("email"), auth.get("password"),Identifier.byName("Default")) //Passing credentials
-				.scopeToProject( Identifier.byId(auth.get("projectID")))//Project id
-				.authenticate();//verify the authentication
-		
-		
+		try {
+			os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
+					.endpoint("https://keystone.rc.nectar.org.au:5000/v3") //Openstack endpoint
+					.credentials(auth.get("email"), auth.get("password"),Identifier.byName("Default")) //Passing credentials
+					.scopeToProject( Identifier.byId(auth.get("projectID")))//Project id
+					.authenticate();//verify the authentication
+		} catch(Exception e)
+		{
+			// supress the logger warning
+		}
+
 		// initializes work node, compiles and runs
 		String script = Base64.getEncoder().encodeToString((
 				"#!/bin/bash\n" + 
 				"sudo mkdir /home/ubuntu/temp\n" + 
 				"sudo apt-get update\n" + 
 				"sudo apt-get upgrade\n" +
-				"javac -cp libs/*:. -sourcepath . *.java" +
-				"java -cp libs/*:. WorkNode").getBytes());// encoded with Base64
+				"./run-worker.sh").getBytes());// encoded with Base64
 		ServerCreate server = Builders.server()//creating a VM server
 				.name("KIT318-Worker-Node")//VM or instance name
 				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
@@ -584,7 +632,6 @@ class WorkerNode {
 				.build();//build the VM with above configuration
 			
 		Server booting=os.compute().servers().boot(server);
-		ipAddress = booting.getAccessIPv4();
 		serverId = booting.getId();
 	}
 	
@@ -597,7 +644,20 @@ class WorkerNode {
 	{
 		shutDownServer();
 		// wait for shutdown
-		
+	}
+
+	public void assignIP()
+	{
+		String ip = os.compute().servers().get(serverId).getAccessIPv4();
+		// wait for IP to be assigned
+		while(ip==null||ip.length()==0) {
+			try {
+				Thread.sleep(1000);
+				//System.out.println("Waiting");
+			} catch(InterruptedException e) {e.printStackTrace();}
+			ip=os.compute().servers().get(serverId).getAccessIPv4();
+		}
+		ipAddress = ip;
 	}
 	
 	public Socket connect() throws UnknownHostException, IOException {

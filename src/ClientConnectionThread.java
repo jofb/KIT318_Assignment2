@@ -37,7 +37,6 @@ class ClientConnectionThread extends Thread {
 			
 			// password list & verification
 			passwordList = WeatherServer.getPasswordList();  
-			String verifiedPassword;  
 			
 			// menu to register or login
 			output.writeBytes("Welcome! Are you... \n");
@@ -47,6 +46,14 @@ class ClientConnectionThread extends Thread {
 			
 			// get the user selection
 			String selection = input.readLine();
+			
+			// super lazy shutdown command
+			if(selection.equals("shutdown"))
+			{
+				serverClient.close();
+				WeatherServer.shutdownServer();
+				return;
+			}
 			
 			// registration
 			if (selection.equals("1")) {
@@ -60,7 +67,6 @@ class ClientConnectionThread extends Thread {
 				output.writeBytes("You will now be registered. Below is your password which you can use to login in the future\n");
 				output.writeBytes(password + "\n");
 				output.writeBytes("\n");
-				verifiedPassword = password;  //this is the successful password, which can then be used later
 			} 
 			// login
 			else if (selection.equals("2")) 
@@ -215,10 +221,7 @@ class ClientConnectionThread extends Thread {
 					output.writeBytes(s + "\n");
 				}
 			}
-			//System.out.print
 
-			// TODO can change this to format response body
-//			output.writeBytes("Response: " + query.response.responseBody + "\n");
 			requestQueue.remove(query);
 			// closing streams
 			input.close();
