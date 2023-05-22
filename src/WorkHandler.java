@@ -88,9 +88,9 @@ class WorkHandler extends Thread {
 		};
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
-		WorkerNode w1 = new WorkerNode(true, auth1);
-		WorkerNode w2 = new WorkerNode(false, auth2); // TODO make w2 and w3 true
-		WorkerNode w3 = new WorkerNode(false, auth2);
+		WorkerNode w1 = new WorkerNode(false, auth1);
+		WorkerNode w2 = new WorkerNode(true, auth2); // TODO make w2 and w3 true
+		WorkerNode w3 = new WorkerNode(true, auth2);
 		WorkerNode w4 = new WorkerNode(false, auth3);
 		WorkerNode w5 = new WorkerNode(false, auth3);
 
@@ -99,20 +99,20 @@ class WorkHandler extends Thread {
 		System.out.println("Initializing workers...");
 		for(WorkerNode worker : workers)
 		{
-			if (!worker.active) break;
+			if (!worker.active) continue;
 			worker.initVM();
 		}
 		// wait for each IP to be assigned
 		for(WorkerNode worker : workers)
 		{
-			if (!worker.active) break;
+			if (!worker.active) continue;
 			worker.assignIP();
 			System.out.println("Worker initialized with IP " + worker.ipAddress);
 		}
 
 		// wait an additional 10 seconds
 		try {
-			Thread.sleep(10000); 
+			Thread.sleep(30000); 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -646,7 +646,7 @@ class WorkerNode {
 				"sudo mkdir /home/ubuntu/temp\n" + 
 				"sudo apt-get update\n" + 
 				"sudo apt-get upgrade\n" +
-				"./run-worker.sh").getBytes());// encoded with Base64
+				"/home/ubuntu/run-worker.sh").getBytes());// encoded with Base64
 		ServerCreate server = Builders.server()//creating a VM server
 				.name("KIT318-Worker-Node")//VM or instance name
 				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
