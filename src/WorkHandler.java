@@ -63,18 +63,18 @@ class WorkHandler extends Thread {
 		
 		/* AUTHENTICATION INFORMATION FOR NECTAR ACCOUNTS */
 		String[] auth1 = {
-				"jtwylde@utas.edu.au", 
-				"M2I1YzA4NWY4MmFhMmRk",
-				"1a58f808e7c34eab90db080bb6fe67fa",
-				"cd5e6ad6-46af-48a1-bdbc-f12c0db1a69a",
-				"kit318_assignment_ssh",
-				"216ad4cd-52a3-4718-94ab-bae4bddcc043"
+				"jtwylde@utas.edu.au", // email
+				"M2I1YzA4NWY4MmFhMmRk", // password
+				"1a58f808e7c34eab90db080bb6fe67fa", //project id
+				"5f02a6d6-bfea-401c-8c64-bb65fda39215", // image id
+				"kit318_assignment_ssh", // keypair
+				"216ad4cd-52a3-4718-94ab-bae4bddcc043" // security id
 		};
 		String[] auth2 = {
 				"aflood@utas.edu.au", 
 				"MWJmNDFmMTkwZTk0M2Fk",
 				"3aea2efef75046f98f78cb3961388169",
-				"d76daf9e-1150-4e89-90b7-d6d98e7d7b21",
+				"8fc5d5db-d5fe-43f3-a422-bcb69e286a5c",
 				"tut7",
 				"a37dc379-f34f-46b5-8633-ce3cc6a5e473"
 		};
@@ -82,16 +82,16 @@ class WorkHandler extends Thread {
 			"vpcleng@utas.edu.au", 
 			"NTE2NWU3OGIwZmZjNGRl",
 			"9a115bd605554e74a34b0339e4bb850e",
-			"eb394fb3-002b-47b9-97ba-72a7a1d81e52",
+			"cd33edb7-7568-41be-902a-6ad1fde87f82",
 			"kit318",
-			"a6b625dc-1ffe-4269-96f1-487d79b1caab"
+			"3bb7cb71-1985-42d5-abdf-acf1349be007"
 		};
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
 		WorkerNode w1 = new WorkerNode(false, auth1); // TODO make w1 true
 		WorkerNode w2 = new WorkerNode(true, auth2);
 		WorkerNode w3 = new WorkerNode(true, auth2);
-		WorkerNode w4 = new WorkerNode(false, auth3);
+		WorkerNode w4 = new WorkerNode(true, auth3);
 		WorkerNode w5 = new WorkerNode(false, auth3);
 
 		workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
@@ -110,9 +110,10 @@ class WorkHandler extends Thread {
 			System.out.println("Worker initialized with IP " + worker.ipAddress);
 		}
 
+
 		// wait an additional 10 seconds
 		try {
-			Thread.sleep(40000); 
+			Thread.sleep(60000); 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -274,14 +275,20 @@ class WorkHandler extends Thread {
 				{
 					continue;
 				}
-				// first check if we're meant to be using priority (some bool on weather server likely)
-				// if yes then can reduce based on highest priority
-				// and set that to work
-				// WorkUnit work = workQueue.stream().reduce((w1, w2) -> w1.priority >= w2.priority ? w1 : w2);
-				
-				// this is either first come first serve, or priority
-				WorkUnit work = workQueue.poll();
-				
+				// check priority if necessary
+				WorkUnit work = workQueue.peek();
+				if(WeatherServer.priorityProcessing && work != null)
+				{
+					int priority = 0;
+					for(WorkUnit w : workQueue)
+					{
+						if(w.priority > priority) work = w;
+					}
+					workQueue.remove(work);
+				} else {
+					work = workQueue.poll();
+				}
+
 				// if there's nothing left in the queue, just leave
 				worker.workingOn = work;
 				if(work == null) break;
@@ -305,9 +312,23 @@ class WorkHandler extends Thread {
 				}
 				worker.available = false;
 			}
-			// check workqueue size compared to workers active
-			// if larger then start new workers
-			// else delte workers 
+			// it takes roughly 250 seconds to start up a vm, we poll every 10
+			// therefore each worker does roughly 25 requests in the time it takes for a vm to start
+			// if there are more requests than we can handle, start up new vms to match it
+			// find number of active workers
+			
+			int activeWorkers = 0;
+			for(WorkerNode w : workers) { if (w.active) activeWorkers++; }
+			if(activeWorkers == workers.size()) continue;
+			
+			while(workQueue.size() > (30 * activeWorkers)) 
+			{
+				if(activeWorkers >= workers.size()) break;
+				workers.get(activeWorkers).initVM();
+				activeWorkers++;
+			}
+			// 1. assign ip
+			// 2. make active
 		}
 		
 		shutdownWorkers();
@@ -435,7 +456,6 @@ class WorkHandler extends Thread {
 		}
 		
 		Request r = new Request(requestId, work.entrySet().size());
-		if(requestType == 3) r.expectedResults = 1; // hacky fix 
 		
 		r.requestType = requestType;
 		r.params = params;
@@ -480,7 +500,7 @@ class WorkHandler extends Thread {
 				w.priority = 1;
 				break;
 			case 2:
-				w.priority = 5;
+				w.priority = 3;
 				break;
 			}
 			workQueue.add(w);
@@ -647,6 +667,7 @@ class WorkerNode {
 				"sudo apt-get update\n" + 
 				"sudo apt-get upgrade\n" +
 				"cd /home/ubuntu\n" +
+				"sudo chmod 764 run_worker.sh\n" +
 				"./run_worker.sh").getBytes());// encoded with Base64
 		ServerCreate server = Builders.server()//creating a VM server
 				.name("KIT318-Worker-Node")//VM or instance name
@@ -664,6 +685,11 @@ class WorkerNode {
 	public void shutDownServer()
 	{
 		os.compute().servers().delete(serverId);
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	public void restartWorker()

@@ -15,6 +15,8 @@ enum QueryType { CREATE, VIEW, STOP };
 public class WeatherServer{
 	
 	static int queryCounter = 0;
+	
+	public static boolean priorityProcessing = false;
 
 
 	// queue of all queries
@@ -37,6 +39,10 @@ public class WeatherServer{
 		TimestampedPrint timestampOut = new TimestampedPrint(System.out);
 		
 		System.setOut(timestampOut);
+		
+		BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+		System.out.println("(0) for first-come first-serve processing (1) for priority based processing");
+		priorityProcessing = br.read() != 0;
 		
 		queryQueue = new LinkedBlockingQueue<Query>();
 		workHandler = new WorkHandler(queryQueue);

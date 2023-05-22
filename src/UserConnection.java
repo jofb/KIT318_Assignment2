@@ -44,7 +44,7 @@ public class UserConnection {
 	public static void main(String[] args) throws Exception {
 		try {
 			// change to match destination address
-			serverSocket = new Socket("127.0.0.1", 9000);
+			serverSocket = new Socket("203.101.226.236", 9000);
 
 			// input and output streams
 			input = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
