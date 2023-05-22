@@ -3,6 +3,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Scanner;
 import java.util.concurrent.locks.Lock;
@@ -73,19 +74,42 @@ public class WorkNodeThread extends Thread {
 				data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
 				
 				result = null;
+				
+				switch(requestType)
+				{
+				// avg 
+				case 1:
+				case 2:
+					int avg = data.stream().reduce(0, Integer::sum) / data.size();
+					result = avg;
+					break;
+					
+				case 3:
+					// compute min/max based on options
+					int m = Integer.parseInt(options);
 
-				/* TODO do the work processing based on request type */
-				// do the work based on data and request type
-				// switch request type
-				// 1 compute avg
-				// 2 compute avg
-				// 3 find highest/lowest, based on 'options'
-				//   then find highest/lowest from that again
-				// 
-				
-				// result = ...
-				
-				result = 5;
+					// pretty bad but will work
+					switch(m)
+					{
+					case 0:
+						int min = Integer.MAX_VALUE;
+						for(int d : data)
+						{
+							if (d < min) min = d;
+						}
+						result = min;
+						break;
+					case 1:
+						int max = Integer.MIN_VALUE;
+						for(int d : data)
+						{
+							if (d > max) max = d;
+						}
+						result = max;
+						break;
+					}
+					break;
+				}
 			} catch (FileNotFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
