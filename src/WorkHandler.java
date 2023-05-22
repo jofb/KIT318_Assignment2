@@ -88,13 +88,13 @@ class WorkHandler extends Thread {
 		};
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
-		WorkerNode w1 = new WorkerNode(false, auth1); // TODO make w1 true
+		//WorkerNode w1 = new WorkerNode(false, auth1); // TODO make w1 true
 		WorkerNode w2 = new WorkerNode(true, auth2);
 		WorkerNode w3 = new WorkerNode(true, auth2);
-		WorkerNode w4 = new WorkerNode(true, auth3);
+		WorkerNode w4 = new WorkerNode(false, auth3);
 		WorkerNode w5 = new WorkerNode(false, auth3);
 
-		workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
+		workers = new ArrayList<WorkerNode>(Arrays.asList(w2, w3, w4, w5));
 		// initialize workers
 		System.out.println("Initializing workers...");
 		for(WorkerNode worker : workers)
@@ -312,23 +312,49 @@ class WorkHandler extends Thread {
 				}
 				worker.available = false;
 			}
+			
+			for(WorkerNode w : workers) 
+			{
+				if (w.starting)
+				{
+					// check how long its been since they started
+					long enough = System.currentTimeMillis() - w.startTime;
+					if(enough >= 280000)
+					{
+						w.active = true;
+						w.available = true;
+						w.starting = false;
+					}
+				}
+			}
 			// it takes roughly 250 seconds to start up a vm, we poll every 10
 			// therefore each worker does roughly 25 requests in the time it takes for a vm to start
 			// if there are more requests than we can handle, start up new vms to match it
 			// find number of active workers
 			
 			int activeWorkers = 0;
-			for(WorkerNode w : workers) { if (w.active) activeWorkers++; }
-			if(activeWorkers == workers.size()) continue;
+			for(WorkerNode w : workers) { if (w.active || w.starting) activeWorkers++; }
 			
-			while(workQueue.size() > (30 * activeWorkers)) 
+			System.out.println("Active workers: " + activeWorkers);
+
+			if(activeWorkers > 2 && workQueue.size() < (30 * activeWorkers))
+			{
+				if(!workers.get(activeWorkers - 1).starting) break;
+				workers.get(activeWorkers - 1).active = false;
+				workers.get(activeWorkers - 1).shutDownServer();
+			}
+			if(activeWorkers == workers.size()) {
+
+				continue;
+			}
+			if(workQueue.size() > (30 * activeWorkers))
 			{
 				if(activeWorkers >= workers.size()) break;
-				workers.get(activeWorkers).initVM();
-				activeWorkers++;
+				activeWorkers++; 
+				System.out.println("Starting new worker from " + workers.get(activeWorkers - 1).auth.get("email"));
+				workers.get(activeWorkers - 1).initVM(); 
+				workers.get(activeWorkers - 1).starting = true;
 			}
-			// 1. assign ip
-			// 2. make active
 		}
 		
 		shutdownWorkers();
@@ -371,7 +397,8 @@ class WorkHandler extends Thread {
 
 			// grab the dataset by station id
 			// List<String> station = WeatherServer.dataByID.get(id);
-			station = WeatherServer.dataByYearID.get(params.get("year")).get(id);
+			station = WeatherServer.getStationData(params.get("year"), id);
+			//station = WeatherServer.dataByYearID.get(params.get("year")).get(id);
 
 			// iterate over station
 			for(String data : station)
@@ -397,17 +424,19 @@ class WorkHandler extends Thread {
 			// yearly average by year
 		case 2:
 			option = (params.get("minMax") == "0")? "TMIN" : "TMAX";
-
-			Map<String, List<String>> year = WeatherServer.dataByYearID.get(params.get("year"));
 			
-			for(Entry<String, List<String>> entry : year.entrySet())
+
+			//Map<String, List<String>> year = WeatherServer.dataByYearID.get(params.get("year"));
+			
+			// iterate over each station id in the year
+			List<File> yearFiles = WeatherServer.getAllStations(params.get("year"));
+			
+			for(File y : yearFiles)
 			{
-				String stationId = entry.getKey();
-				
-				station = entry.getValue();
-				
+				station = WeatherServer.getStationData(y);
 				for(String data : station)
 				{
+					String stationId = data.split(",")[0];
 					String[] line = data.split(",");
 					if(line[2].equals(option)) continue;
 
@@ -422,6 +451,29 @@ class WorkHandler extends Thread {
 					work.get(key).add(temp);
 				}
 			}
+//			
+//			for(Entry<String, List<String>> entry : year.entrySet())
+//			{
+//				String stationId = entry.getKey();
+//				
+//				station = entry.getValue();
+//				
+//				for(String data : station)
+//				{
+//					String[] line = data.split(",");
+//					if(line[2].equals(option)) continue;
+//
+//					int temp = Integer.parseInt(line[3]);
+//					
+//					String key = stationId;
+//					
+//					if(!work.containsKey(key))
+//					{
+//						work.put(key, new ArrayList<Integer>());
+//					}
+//					work.get(key).add(temp);
+//				}
+//			}
 
 			break;
 			// month which has highest/lowest max temperature in given year and station
@@ -432,7 +484,8 @@ class WorkHandler extends Thread {
 			int highLow = Integer.parseInt(params.get("minMax")); // this needs to be put on the request object
 
 			metadata = Integer.toString(highLow);
-			station = WeatherServer.dataByYearID.get(params.get("year")).get(id);
+//			station = WeatherServer.dataByYearID.get(params.get("year")).get(id);
+			station = WeatherServer.getStationData(params.get("year"), id);
 			
 			for(String data : station)
 			{
@@ -582,12 +635,11 @@ class Request {
 			time = time / 1000;  //to seconds
 			time = time / 60;  //to minutes (not going to bother with hours)
 			end_date = dtf.format(LocalDateTime.now());
-			// TODO format the results nicer
+
 			Map<String, Integer> tree = new TreeMap<String, Integer>(results);
 			String resultsString = tree.toString();
 			resultsString = resultsString.replace("=", ": ").replace("{", "[ ").replace("}", " ]");
 
-			// would be cool if we could give info about their query here but don't think it's possible?
 			String statement = String.format("Request: " + formattedRequestType() + "\n" +
 					"Results: %s\n" +
 					"Start Date: %s, End Date: %s, Time taken (minutes): %d\n" +
@@ -619,7 +671,10 @@ class WorkerNode {
 
 	boolean active;
 	boolean available;
+	boolean starting = false;
 	WorkUnit workingOn;
+	
+	long startTime;
 	
 	Map<String, String> auth;
 	
@@ -648,6 +703,7 @@ class WorkerNode {
 	// key pair name
 	// security group id
 	public void initVM() {
+		startTime = System.currentTimeMillis();
 		// authenticate openstack builder
 		try {
 			os = OSFactory.builderV3()//Setting up openstack client with  -OpenStack factory
