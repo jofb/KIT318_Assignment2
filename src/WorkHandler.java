@@ -71,26 +71,26 @@ class WorkHandler extends Thread {
 				"216ad4cd-52a3-4718-94ab-bae4bddcc043"
 		};
 		String[] auth2 = {
-				"vpcleng@utas.edu.au", 
-				"NTE2NWU3OGIwZmZjNGRl",
-				"9a115bd605554e74a34b0339e4bb850e",
-				"eb394fb3-002b-47b9-97ba-72a7a1d81e52",
-				"kit318",
-				"a6b625dc-1ffe-4269-96f1-487d79b1caab"
+				"aflood@utas.edu.au", 
+				"MWJmNDFmMTkwZTk0M2Fk",
+				"3aea2efef75046f98f78cb3961388169",
+				"d76daf9e-1150-4e89-90b7-d6d98e7d7b21",
+				"tut7",
+				"f3afa7ea-412d-4253-8e78-75d75ab8bd64"
 		};
 		String[] auth3 = {
-				"email", 
-				"password",
-				"projectID",
-				"imageID",
-				"keypairname",
-				"securitygroupID"
+			"vpcleng@utas.edu.au", 
+			"NTE2NWU3OGIwZmZjNGRl",
+			"9a115bd605554e74a34b0339e4bb850e",
+			"eb394fb3-002b-47b9-97ba-72a7a1d81e52",
+			"kit318",
+			"a6b625dc-1ffe-4269-96f1-487d79b1caab"
 		};
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
-		WorkerNode w1 = new WorkerNode(true, auth1);
-		WorkerNode w2 = new WorkerNode(false, auth2); // TODO make w2 and w3 true
-		WorkerNode w3 = new WorkerNode(false, auth2);
+		WorkerNode w1 = new WorkerNode(false, auth1);
+		WorkerNode w2 = new WorkerNode(true, auth2); // TODO make w2 and w3 true
+		WorkerNode w3 = new WorkerNode(true, auth2);
 		WorkerNode w4 = new WorkerNode(false, auth3);
 		WorkerNode w5 = new WorkerNode(false, auth3);
 
@@ -99,20 +99,20 @@ class WorkHandler extends Thread {
 		System.out.println("Initializing workers...");
 		for(WorkerNode worker : workers)
 		{
-			if (!worker.active) break;
+			if (!worker.active) continue;
 			worker.initVM();
 		}
 		// wait for each IP to be assigned
 		for(WorkerNode worker : workers)
 		{
-			if (!worker.active) break;
+			if (!worker.active) continue;
 			worker.assignIP();
 			System.out.println("Worker initialized with IP " + worker.ipAddress);
 		}
 
 		// wait an additional 10 seconds
 		try {
-			Thread.sleep(10000); 
+			Thread.sleep(30000); 
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -533,6 +533,31 @@ class Request {
 		
 		// if status is complete
 		if (status == 100) {
+			if(requestType == 3)
+			{
+				// quickly aggregate results
+				// very hacky
+				// find max or min
+				int minMax = Integer.parseInt(params.get("minMax"));
+				String k = "";
+				int v;
+				if(minMax == 0) v = Integer.MAX_VALUE;
+				else v = Integer.MIN_VALUE;
+				for(Entry<String, Integer> entry : results.entrySet())
+				{
+					String key = entry.getKey();
+					Integer value = entry.getValue();
+					
+					if((minMax == 0 && value < v) || (minMax == 1 && value > v))
+					{
+						v = value;
+						k = key;
+					}
+				}
+				// clear results and only grab the one that counts
+				results.clear();
+				results.put(k, v);
+			}
 			time = System.currentTimeMillis() - time;
 			time = time / 1000;  //to seconds
 			time = time / 60;  //to minutes (not going to bother with hours)
@@ -621,7 +646,7 @@ class WorkerNode {
 				"sudo mkdir /home/ubuntu/temp\n" + 
 				"sudo apt-get update\n" + 
 				"sudo apt-get upgrade\n" +
-				"./run-worker.sh").getBytes());// encoded with Base64
+				"/home/ubuntu/run-worker.sh").getBytes());// encoded with Base64
 		ServerCreate server = Builders.server()//creating a VM server
 				.name("KIT318-Worker-Node")//VM or instance name
 				.flavor("406352b0-2413-4ea6-b219-1a4218fd7d3b")//flavour id
