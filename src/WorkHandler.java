@@ -533,6 +533,31 @@ class Request {
 		
 		// if status is complete
 		if (status == 100) {
+			if(requestType == 3)
+			{
+				// quickly aggregate results
+				// very hacky
+				// find max or min
+				int minMax = Integer.parseInt(params.get("minMax"));
+				String k = "";
+				int v;
+				if(minMax == 0) v = Integer.MAX_VALUE;
+				else v = Integer.MIN_VALUE;
+				for(Entry<String, Integer> entry : results.entrySet())
+				{
+					String key = entry.getKey();
+					Integer value = entry.getValue();
+					
+					if((minMax == 0 && value < v) || (minMax == 1 && value > v))
+					{
+						v = value;
+						k = key;
+					}
+				}
+				// clear results and only grab the one that counts
+				results.clear();
+				results.put(k, v);
+			}
 			time = System.currentTimeMillis() - time;
 			time = time / 1000;  //to seconds
 			time = time / 60;  //to minutes (not going to bother with hours)
