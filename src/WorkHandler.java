@@ -79,12 +79,12 @@ class WorkHandler extends Thread {
 				"a37dc379-f34f-46b5-8633-ce3cc6a5e473"
 		};
 		String[] auth3 = {
-				"email", 
-				"password",
-				"projectID",
-				"imageID",
-				"keypairname",
-				"securitygroupID"
+			"vpcleng@utas.edu.au", 
+			"NTE2NWU3OGIwZmZjNGRl",
+			"9a115bd605554e74a34b0339e4bb850e",
+			"eb394fb3-002b-47b9-97ba-72a7a1d81e52",
+			"kit318",
+			"a6b625dc-1ffe-4269-96f1-487d79b1caab"
 		};
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
