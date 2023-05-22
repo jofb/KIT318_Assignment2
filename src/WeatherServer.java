@@ -1,4 +1,5 @@
 import java.net.*;
+import java.text.SimpleDateFormat;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -201,6 +202,24 @@ public class WeatherServer{
 		}
 		return mappedData;
 	}
+}
+
+class TimestampedPrint extends PrintStream {
+
+	private final SimpleDateFormat format;
+	
+	public TimestampedPrint(PrintStream out) {
+		super(out);
+		format = new SimpleDateFormat("HH:mm:ss");
+	}
+	
+	@Override
+	public void println(String x)
+	{
+		String timestamp = format.format(new Date());
+		super.println(String.format("[%s] %s", timestamp, x));
+	}
+
 }
 
 class QueryResponse {
