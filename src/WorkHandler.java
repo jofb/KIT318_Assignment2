@@ -94,8 +94,8 @@ class WorkHandler extends Thread {
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
 		WorkerNode w1 = new WorkerNode(true, auth1); 
-		WorkerNode w2 = new WorkerNode(false, auth2);
-		WorkerNode w3 = new WorkerNode(false, auth2);
+		WorkerNode w2 = new WorkerNode(true, auth2);
+		WorkerNode w3 = new WorkerNode(true, auth2);
 		WorkerNode w4 = new WorkerNode(false, auth3);
 		WorkerNode w5 = new WorkerNode(false, auth3);
 
