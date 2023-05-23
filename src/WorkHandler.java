@@ -14,11 +14,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.TreeMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.Comparator;
 
 import org.openstack4j.api.Builders;
 import org.openstack4j.api.OSClient.OSClientV3;
@@ -35,9 +37,6 @@ import org.openstack4j.openstack.OSFactory;
 class WorkHandler extends Thread {
 	private static final String REQUESTS_DIR = "requests";
 
-	Socket serverClient;
-	int clientNumber;
-	
 	int requestCounter = 0;
 	
 	List<WorkerNode> workers;
@@ -48,12 +47,18 @@ class WorkHandler extends Thread {
 	// map from requestid to request object
 	Map<Integer, Request> requests = new HashMap<Integer, Request>();
 
-	Queue<WorkUnit> workQueue = new LinkedBlockingQueue<WorkUnit>();
+	Queue<WorkUnit> workQueue;
 	
 	public boolean runningWorkHandler = true;
 
-	WorkHandler(Queue<Query> requestQueue) {
+	WorkHandler(boolean priority, Queue<Query> requestQueue) {
 		this.queryQueue = requestQueue;
+		
+		if(priority)
+		{
+			workQueue = new PriorityQueue<WorkUnit>(new WorkComparator());
+		}
+		else workQueue = new LinkedBlockingQueue<WorkUnit>();
 	}
 
 	public void run() {
@@ -66,7 +71,7 @@ class WorkHandler extends Thread {
 				"jtwylde@utas.edu.au", // email
 				"M2I1YzA4NWY4MmFhMmRk", // password
 				"1a58f808e7c34eab90db080bb6fe67fa", //project id
-				"5f02a6d6-bfea-401c-8c64-bb65fda39215", // image id
+				"065fb181-3a13-4b66-b6fb-5c47ecd86fe2", // image id
 				"kit318_assignment_ssh", // keypair
 				"216ad4cd-52a3-4718-94ab-bae4bddcc043" // security id
 		};
@@ -74,7 +79,7 @@ class WorkHandler extends Thread {
 				"aflood@utas.edu.au", 
 				"MWJmNDFmMTkwZTk0M2Fk",
 				"3aea2efef75046f98f78cb3961388169",
-				"8fc5d5db-d5fe-43f3-a422-bcb69e286a5c",
+				"aff7d076-c640-4fc9-a1f2-171dc389c4c5",
 				"tut7",
 				"a37dc379-f34f-46b5-8633-ce3cc6a5e473"
 		};
@@ -82,19 +87,19 @@ class WorkHandler extends Thread {
 			"vpcleng@utas.edu.au", 
 			"NTE2NWU3OGIwZmZjNGRl",
 			"9a115bd605554e74a34b0339e4bb850e",
-			"cd33edb7-7568-41be-902a-6ad1fde87f82",
+			"ef7538ea-0696-4036-a4e8-b6b3042db922",
 			"kit318",
 			"3bb7cb71-1985-42d5-abdf-acf1349be007"
 		};
 		
 		/* INITIALIZE ALL AUTH INFORMATION FOR WORKER NODES*/
-		//WorkerNode w1 = new WorkerNode(false, auth1); // TODO make w1 true
-		WorkerNode w2 = new WorkerNode(true, auth2);
-		WorkerNode w3 = new WorkerNode(true, auth2);
+		WorkerNode w1 = new WorkerNode(true, auth1); 
+		WorkerNode w2 = new WorkerNode(false, auth2);
+		WorkerNode w3 = new WorkerNode(false, auth2);
 		WorkerNode w4 = new WorkerNode(false, auth3);
 		WorkerNode w5 = new WorkerNode(false, auth3);
 
-		workers = new ArrayList<WorkerNode>(Arrays.asList(w2, w3, w4, w5));
+		workers = new ArrayList<WorkerNode>(Arrays.asList(w1, w2, w3, w4, w5));
 		// initialize workers
 		System.out.println("Initializing workers...");
 		for(WorkerNode worker : workers)
@@ -110,8 +115,7 @@ class WorkHandler extends Thread {
 			System.out.println("Worker initialized with IP " + worker.ipAddress);
 		}
 
-
-		// wait an additional 10 seconds
+		// wait an additional 60 seconds
 		try {
 			Thread.sleep(60000); 
 		} catch (InterruptedException e) {
@@ -123,7 +127,7 @@ class WorkHandler extends Thread {
 		{
 			notify();
 		}
-		// ITE00100550
+		// ITE00100550, AE000041196
 		while(true)
 		{
 			// wait for updates to request queue
@@ -141,8 +145,8 @@ class WorkHandler extends Thread {
 							break;
 						}
 					}
-					// if needed, update every 10s, otherwise only cycle when there are queries
-					if(waitTime) queryQueue.wait(10000);
+					// if needed, update every 5s, otherwise only cycle when there are queries
+					if(waitTime) queryQueue.wait(5000);
 					else queryQueue.wait();
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -176,13 +180,7 @@ class WorkHandler extends Thread {
 					case STOP:
 						id = Integer.parseInt(params.get("requestId"));
 						// cancel this id
-						for(WorkUnit work : workQueue)
-						{
-							if(work.requestId == id)
-							{
-								workQueue.remove(work);
-							}
-						}
+						workQueue.removeIf(w -> w.requestId == id);
 						response = String.format("Request [%d] has been deleted", id);
 						requests.remove(id);
 						break;
@@ -190,6 +188,7 @@ class WorkHandler extends Thread {
 				} catch(Exception e)
 				{
 					response = "There was an error while processing your query!";
+					e.printStackTrace();
 				}
 
 				// once done, create a QueryResponse object and attach to the query
@@ -227,13 +226,17 @@ class WorkHandler extends Thread {
 						if(currentRequest != null)
 						{
 							// get back the filename as well, set that to the key
-							String key = input.readLine();
+							String file = input.readLine();
 							// formats it nicely
-							key = key.split("/")[1].split(".txt")[0];
+							String key = file.split("/")[1].split(".txt")[0];
 							key = key.substring(key.indexOf("_") + 1);
-							System.out.println(String.format("Received [%s] %s result", requestid, key));
-							int result = input.read();
+							int result = Integer.parseInt(input.readLine());
+							System.out.println(String.format("Received [%s] %s result: %d", requestid, key, result));
 							currentRequest.results.put(key, result);
+							
+							// delete file
+							File f = new File(file);
+							f.delete();
 						}
 						
 						// set worker to not working
@@ -241,7 +244,7 @@ class WorkHandler extends Thread {
 					}
 					
 					s.close();					
-				} // TODO should wrap these in functions
+				} 
 				catch (UnknownHostException e) {
 					//e.printStackTrace();
 					System.out.println("Connection refused! Restarting worker " + worker.ipAddress + "...");
@@ -250,7 +253,6 @@ class WorkHandler extends Thread {
 					if(w != null) workQueue.add(w);
 					worker.available = false;
 					worker.active = false;
-					// TODO restart the vm?
 					worker.shutDownServer();
 				} catch (IOException e) {
 					//e.printStackTrace();
@@ -260,7 +262,6 @@ class WorkHandler extends Thread {
 					if(w != null) workQueue.add(w);
 					worker.available = false;
 					worker.active = false;
-					// TODO restart the vm?
 					worker.shutDownServer();
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -275,19 +276,8 @@ class WorkHandler extends Thread {
 				{
 					continue;
 				}
-				// check priority if necessary
-				WorkUnit work = workQueue.peek();
-				if(WeatherServer.priorityProcessing && work != null)
-				{
-					int priority = 0;
-					for(WorkUnit w : workQueue)
-					{
-						if(w.priority > priority) work = w;
-					}
-					workQueue.remove(work);
-				} else {
-					work = workQueue.poll();
-				}
+				// poll workqueue
+				WorkUnit work = workQueue.poll();
 
 				// if there's nothing left in the queue, just leave
 				worker.workingOn = work;
@@ -307,7 +297,6 @@ class WorkHandler extends Thread {
 					
 					s.close();
 				} catch (Exception e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 				worker.available = false;
@@ -319,25 +308,26 @@ class WorkHandler extends Thread {
 				{
 					// check how long its been since they started
 					long enough = System.currentTimeMillis() - w.startTime;
-					if(enough >= 280000)
+					if(enough >= 240000)
 					{
 						w.active = true;
 						w.available = true;
 						w.starting = false;
+						w.assignIP();
 					}
 				}
 			}
-			// it takes roughly 250 seconds to start up a vm, we poll every 10
-			// therefore each worker does roughly 25 requests in the time it takes for a vm to start
+			// it takes roughly 250 seconds to start up a vm, we poll every 5
+			// therefore each worker does roughly 50 requests in the time it takes for a vm to start
 			// if there are more requests than we can handle, start up new vms to match it
 			// find number of active workers
 			
 			int activeWorkers = 0;
 			for(WorkerNode w : workers) { if (w.active || w.starting) activeWorkers++; }
 			
-			System.out.println("Active workers: " + activeWorkers);
+			System.out.println("Active workers: " + activeWorkers + " | Work in Queue: " + workQueue.size());
 
-			if(activeWorkers > 2 && workQueue.size() < (30 * activeWorkers))
+			if(activeWorkers > 3 && workQueue.size() < (50 * activeWorkers))
 			{
 				if(!workers.get(activeWorkers - 1).starting) break;
 				workers.get(activeWorkers - 1).active = false;
@@ -347,7 +337,7 @@ class WorkHandler extends Thread {
 
 				continue;
 			}
-			if(workQueue.size() > (30 * activeWorkers))
+			if(workQueue.size() > (50 * activeWorkers))
 			{
 				if(activeWorkers >= workers.size()) break;
 				activeWorkers++; 
@@ -451,34 +441,10 @@ class WorkHandler extends Thread {
 					work.get(key).add(temp);
 				}
 			}
-//			
-//			for(Entry<String, List<String>> entry : year.entrySet())
-//			{
-//				String stationId = entry.getKey();
-//				
-//				station = entry.getValue();
-//				
-//				for(String data : station)
-//				{
-//					String[] line = data.split(",");
-//					if(line[2].equals(option)) continue;
-//
-//					int temp = Integer.parseInt(line[3]);
-//					
-//					String key = stationId;
-//					
-//					if(!work.containsKey(key))
-//					{
-//						work.put(key, new ArrayList<Integer>());
-//					}
-//					work.get(key).add(temp);
-//				}
-//			}
 
 			break;
 			// month which has highest/lowest max temperature in given year and station
 		case 3:
-			// TODO not done yet
 			id = params.get("stationId");
 			option = "TMAX";
 			int highLow = Integer.parseInt(params.get("minMax")); // this needs to be put on the request object
@@ -517,8 +483,10 @@ class WorkHandler extends Thread {
 		
 		System.out.println(String.format("Generated %d work units", work.entrySet().size()));
 
+		int count = 0;
 		for (Map.Entry<String, List<Integer>> entry : work.entrySet())
 		{
+			count++;
 			// use these to write to file
 			String key = entry.getKey();
 			List<Integer> values = entry.getValue();
@@ -545,18 +513,18 @@ class WorkHandler extends Thread {
 			w.requestType = requestType;
 			w.data = filename;
 			w.metadata = metadata;
-			
+			// ones that are further along
 			switch(requestType)
 			{
 			case 1:
 			case 3:
-				w.priority = 1;
+				w.priority = 1 + (count / r.expectedResults);
 				break;
 			case 2:
-				w.priority = 3;
+				w.priority = 0.75f + (count / r.expectedResults);
 				break;
 			}
-			workQueue.add(w);
+			workQueue.offer(w);
 		}
 		
 		return requestId;
@@ -592,9 +560,9 @@ class Request {
 		String minMax = params.get("minMax");
 		
 		String[] requests = {
-				String.format("Average monthly %s temperature for station %s in %s", (minMax == "0"? "min" : "max"), id, y),
-				String.format("Average yearly %s temperature in %s", (minMax == "0"? "min" : "max"), y),
-				String.format("Month with %s temperature for %s in %s", (minMax == "0"? "lowest" : "highest"), id, y)
+				String.format("Average monthly %s temperature for station %s in %s", (minMax.equals("0")? "min" : "max"), id, y),
+				String.format("Average yearly %s temperature in %s", (minMax.equals("0")? "min" : "max"), y),
+				String.format("Month with %s temperature for %s in %s", (minMax.equals("0")? "lowest" : "highest"), id, y)
 		};
 
 		return requests[requestType - 1];
@@ -646,7 +614,7 @@ class Request {
 					"Total Cost ($3/minute): $%d", resultsString, start_date, end_date, time, 3 * time);			
 			return statement;
 		} else {
-			String statement = "Your query is still being processed. It is currently " + status +
+			String statement = "Your request is still being processed. It is currently " + status +
 					"% complete";
 			return statement;
 		}
@@ -660,13 +628,17 @@ class WorkUnit {
 	Integer requestType;
 	String data;
 	String metadata;
-	int priority = 1;
+	float priority = 1;
+}
+
+class WorkComparator implements Comparator<WorkUnit> {
+    @Override
+    public int compare(WorkUnit w1, WorkUnit w2) {
+        return Float.compare(w2.priority, w1.priority);
+    }
 }
 
 
-// TODO in here we could also create a method to create the VM
-// TODO rather than port it should be storing an ip address since we will be working with VMs
-// using ports for now on local machines since all on same machine
 class WorkerNode {
 
 	boolean active;
@@ -683,8 +655,7 @@ class WorkerNode {
 	String ipAddress;
 	String serverId;
 	int port = 9000;
-	
-	// TODO pass in the auth information
+
 	WorkerNode(boolean start, String[] _auth) {
 		// email, password, projectID, imageID, keyPairName, securityID
 		auth = new HashMap<String, String>();
@@ -699,9 +670,6 @@ class WorkerNode {
 		available = start;
 	}
 	
-	// image id
-	// key pair name
-	// security group id
 	public void initVM() {
 		startTime = System.currentTimeMillis();
 		// authenticate openstack builder
@@ -714,6 +682,7 @@ class WorkerNode {
 		} catch(Exception e)
 		{
 			// supress the logger warning
+			e.printStackTrace();
 		}
 
 		// initializes work node, compiles and runs
@@ -736,6 +705,7 @@ class WorkerNode {
 			
 		Server booting=os.compute().servers().boot(server);
 		serverId = booting.getId();
+		System.out.println("Booting worker with ID " + serverId + "...");
 	}
 	
 	public void shutDownServer()

@@ -44,7 +44,7 @@ public class UserConnection {
 	public static void main(String[] args) throws Exception {
 		try {
 			// change to match destination address
-			serverSocket = new Socket("203.101.226.236", 9000);
+			serverSocket = new Socket("203.101.228.233", 9000);
 
 			// input and output streams
 			input = new BufferedReader(new InputStreamReader(serverSocket.getInputStream()));
@@ -152,6 +152,7 @@ public class UserConnection {
 				multiLineUserInput(input, br, output);
 			}
 
+			System.out.println("Your query is being processed. Please wait a moment...");
             // get the response from server
             menuPrint(input);
 

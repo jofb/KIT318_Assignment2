@@ -23,9 +23,6 @@ import com.jcraft.jsch.SftpException;
 
 /* WorkNode will continually wait for connection, and then complete the given work when it receives one */
 public class WorkNode {
-	
-	
-	public static volatile Object result = null;
 
 	public static void main(String[] args) throws Exception
 	{

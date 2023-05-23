@@ -13,6 +13,7 @@ import java.util.concurrent.locks.ReentrantLock;
 enum QueryType { CREATE, VIEW, STOP };
 
 public class WeatherServer{
+	private static final String DATA_DIR = "data";
 	
 	static int queryCounter = 0;
 	
@@ -28,11 +29,26 @@ public class WeatherServer{
 	// list of passwords for registered users
     static List<String> passwordList = new ArrayList<String>();
     
-    public static Map<String, Map<String, List<String>>> dataByYearID;
+    //public static Map<String, Map<String, List<String>>> dataByYearID;
     
     private static boolean runningServer = true;
     
     private static ServerSocket server;
+    
+    // https://stackoverflow.com/questions/7768071/how-to-delete-directory-content-in-java
+    public static void deleteFolder(File folder) {
+        File[] files = folder.listFiles();
+        if(files!=null) { //some JVMs return null for empty dirs
+            for(File f: files) {
+                if(f.isDirectory()) {
+                    deleteFolder(f);
+                } else {
+                    f.delete();
+                }
+            }
+        }
+        folder.delete();
+    }
 
 	public static void main(String[] args) throws Exception {
 		
@@ -45,29 +61,31 @@ public class WeatherServer{
 		priorityProcessing = br.read() != 0;
 		
 		queryQueue = new LinkedBlockingQueue<Query>();
-		workHandler = new WorkHandler(queryQueue);
+		
+		workHandler = new WorkHandler(priorityProcessing, queryQueue);
 		
 		// initialize dataset
 		
 		// can use command line arg or set manually
-		System.out.println("Processing datasets...");
-		dataByYearID = new HashMap<String, Map<String, List<String>>>();
+		System.out.println("Indexing datasets...");
+		File requestDir = new File(DATA_DIR);
+		// clear requests cache
+		requestDir.mkdir();
+
+		// check years we want to include and assert that they exist
 		for(String arg : args)
 		{
-			List<String> data = processData(arg);
-			HashMap<String, List<String>> dataByID = dataSplit(data, 0);
-			String year = data.get(0).split(",")[1].substring(0, 4); // disgusting but works
-			
-			dataByYearID.put(year, dataByID);
-			int size = 0;
-			for(Map.Entry<String, List<String>> entry : dataByID.entrySet())
-			{
-				size += entry.getValue().size();
-			}
-			System.out.println("Processed dataset with size " + size);
+			File f = new File(requestDir.toPath() + "/" + arg);
+			if(f.isDirectory()) System.out.println(arg + " dataset indexed!");
 		}
-		System.out.println("Datasets processed!");
+		System.out.println("Datasets ready!");
+		
+		System.out.println("Clearing requests cache...");
+		File cache = new File("requests");
+		if(cache.isDirectory()) deleteFolder(cache);
+		System.out.println("Requests cache cleared!");
 
+		//if(priorityProcessing) return;
 		// starting up the work handler thread
 		workHandler.start();
 		
@@ -120,6 +138,37 @@ public class WeatherServer{
 				e.printStackTrace();
 			}
 		}
+	}
+	
+	public static List<File> getAllStations(String year)
+	{
+		File dir = new File(DATA_DIR + "/" + year);
+		File[] files = dir.listFiles();
+		return Arrays.asList(files);
+	}
+	public static List<String> getStationData(File path)
+	{
+		List<String> data = null;
+		try {
+			data = processData(path.toString());
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return data;
+	}
+	
+
+	public static List<String> getStationData(String year, String station)
+	{
+		List<String> data = null;
+		try {
+			data = processData(DATA_DIR + "/" + year + "/" + station + ".csv");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return data;
 	}
 	
 	public static void shutdownServer()
@@ -175,38 +224,6 @@ public class WeatherServer{
 			allData.add(relevantData);  //adds our data to the list
 		} while (sc.hasNextLine() == true);  //loops until we've gotten to the end of the list
 		return allData;
-	}
-	
-	/**
-	 * Maps a dataset to a given delimiter key. (station_id, date, value type, temperature)
-	 * @param data The data to split/map
-	 * @param delimiter The delimiter to split by (0 - 3), as defined in processData
-	 * @return The new mapped dataset
-	 */
-	private static HashMap<String, List<String>> dataSplit(List<String> data, int delimiter) throws Exception
-	{
-		// this could be better (yucky manual 0 or 3) but is ok
-		if(delimiter < 0 || delimiter > 3) throw new Exception("Invalid delimiter when splitting data");
-		
-		HashMap<String, List<String>> mappedData = new HashMap<String, List<String>>();
-
-		for(String item : data)
-		{
-			// create the key based on the delimiter
-			String[] line = item.split(",");
-			String key = line[delimiter];
-			
-			// special case for year (not great)
-			if(delimiter == 1) key = key.substring(0, 4);
-			
-			// create new list
-			if(!mappedData.containsKey(key))
-			{
-				mappedData.put(key, new ArrayList<String>());
-			}
-			mappedData.get(key).add(item);
-		}
-		return mappedData;
 	}
 }
 

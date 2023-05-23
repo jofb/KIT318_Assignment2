@@ -17,9 +17,7 @@ class ClientConnectionThread extends Thread {
 	private Socket serverClient;
 	private int clientNumber;
 	private Queue<Query> requestQueue;
-	private Lock lock;
-	private Condition condition;
-	
+
 	private List<String> passwordList;  //list of all passwords
 	
 	
@@ -238,16 +236,13 @@ class ClientConnectionThread extends Thread {
 		}
 	}
 	
-	//getter for password list (don't know if this is necessary)
+	//getter for password list 
 	public List<String> getPasswordList() {
 		return passwordList;
 	}
 
-	//setter for password list (don't know if this is necessary)
+	//setter for password list 
 	public void setPasswordList(List<String> passwordList) {
 		this.passwordList = passwordList;
-	}
-	public static void menu(Scanner sc, DataOutputStream output) {
-		
 	}
 }
