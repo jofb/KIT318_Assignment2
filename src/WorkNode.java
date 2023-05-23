@@ -65,9 +65,10 @@ public class WorkNode {
 				if (finished) {  
 					output.write(thread.getRequestId());
 					output.writeBytes(thread.getKey() + "\n");
-					output.write(thread.getResult());
+					int r = thread.getResult();
+					output.writeBytes(r + "\n");
 					
-					System.out.println("Returning results: " + thread.getResult());
+					System.out.println("Returning results: " + r);
 					thread.setResult(null);
 				}
 			}

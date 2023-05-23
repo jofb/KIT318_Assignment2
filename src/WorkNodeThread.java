@@ -72,7 +72,6 @@ public class WorkNodeThread extends Thread {
 				}
 				// map to list of integers
 				data = lines.stream().map(Integer::parseInt).collect(Collectors.toList());
-				
 				result = null;
 				
 				switch(requestType)
